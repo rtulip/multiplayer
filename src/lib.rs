@@ -10,11 +10,6 @@ enum Message {
     Terminate,
 }
 
-pub struct ThreadPool {
-    workers: Vec<Worker>,
-    sender: mpsc::Sender<Message>,
-}
-
 trait FnBox {
     fn call_box(self: Box<Self>);
 }
@@ -26,6 +21,11 @@ impl<F: FnOnce()> FnBox for F {
 }
 
 type Job = Box<FnBox + Send + 'static>;
+
+pub struct ThreadPool {
+    workers: Vec<Worker>,
+    sender: mpsc::Sender<Message>,
+}
 
 impl ThreadPool {
     /// Create a new ThreadPool.
