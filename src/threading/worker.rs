@@ -14,7 +14,8 @@ impl Worker {
     pub fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Message>>>) ->
         Worker {
 
-        let thread = thread::spawn(move ||{
+        let thread = thread::spawn(move || loop {
+            println!("Worker {} waiting for job", id);
             let message = receiver.lock().unwrap().recv().unwrap();
 
             match message {
@@ -25,6 +26,7 @@ impl Worker {
                 },
                 Message::Terminate => {
                     println!("Worker {} was told to terminate.", id);
+                    break;
                 },
             }
         
