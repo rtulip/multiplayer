@@ -1,5 +1,5 @@
 extern crate multiplayer;
-use multiplayer::threading::threadpool::{ThreadPool, Message};
+use multiplayer::threading::threadpool::{ThreadPool, Message, new_job};
 use multiplayer::msg;
 use std::sync::mpsc;
 use std::net::{TcpListener, TcpStream, SocketAddr};
@@ -8,34 +8,28 @@ use std::io::prelude::*;
 fn main() {
     
     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
-    let connection_pool = ThreadPool::new(100);
-    let parser_pool = ThreadPool::new(5);
-
+    let pool = ThreadPool::new(100);
+    
     loop {
 
         if let Ok((stream, addr)) = listener.accept(){
             
             let stream_clone = stream.try_clone().expect("Unable to clone stream");
-            let sender_clone = parser_pool.sender.clone();
+            let sender_clone = pool.sender.clone();
     
-            connection_pool.execute(move || {
-                
-                loop {
-                    match client_listen(stream_clone.try_clone().expect("unable to clone stream"), addr, sender_clone.clone()) {
-                        Ok(()) => (),
-                        Err(e) => {
-                            println!("{}", e);
-                            break;
-                        },
-                    }
+            pool.execute(move || loop {
+                match client_listen(stream_clone.try_clone().expect("unable to clone stream"), addr, sender_clone.clone()) {
+                    Ok(()) => (),
+                    Err(e) => {
+                        println!("{}", e);
+                        break;
+                    },
                 }
             });
         }
 
     }
 
-
-    
 }
 
 type Result<T> = std::result::Result<T, ClientDisconnectError>;
@@ -76,11 +70,9 @@ fn client_listen(mut socket: TcpStream, addr: SocketAddr, out_stream: mpsc::Send
             println!("MSG: {}", msg);
 
             out_stream.send(
-                Message::NewJob(
-                    Box::new(move || {
-                        echo_message(&mut socket, msg);
-                    })
-                )
+                new_job(move || {
+                    echo_message(&mut socket, msg);
+                })
             ).unwrap();
 
             Ok(())

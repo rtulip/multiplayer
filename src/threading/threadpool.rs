@@ -10,6 +10,15 @@ pub enum Message {
     Terminate,
 }
 
+pub fn new_job<F>(f: F) -> Message
+    where
+        F: FnOnce() + Send + 'static
+{
+    let job = Box::new(f);
+
+    Message::NewJob(job)
+}
+
 pub struct ThreadPool {
     workers: Vec<Worker>,
     pub sender: mpsc::Sender<Message>,
