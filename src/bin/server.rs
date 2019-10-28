@@ -1,7 +1,7 @@
 extern crate multiplayer;
 use multiplayer::threading::threadpool::{ThreadPool, Message};
 use multiplayer::msg;
-use std::sync::{mpsc,Arc,Mutex};
+use std::sync::mpsc;
 use std::net::{TcpListener, TcpStream, SocketAddr};
 use std::io::prelude::*;
 
@@ -17,11 +17,11 @@ fn main() {
             
             let stream_clone = stream.try_clone().expect("Unable to clone stream");
             let sender_clone = parser_pool.sender.clone();
-
+    
             connection_pool.execute(move || {
                 
                 loop {
-                    match client_listen(stream_clone.try_clone().expect("unable to clone stream"), addr, &sender_clone) {
+                    match client_listen(stream_clone.try_clone().expect("unable to clone stream"), addr, sender_clone.clone()) {
                         Ok(()) => (),
                         Err(e) => {
                             println!("{}", e);
@@ -58,7 +58,7 @@ impl std::error::Error for ClientDisconnectError {
     } 
 }
 
-fn client_listen(mut socket: TcpStream, addr: SocketAddr, out_stream: &Arc<Mutex<mpsc::Sender<Message>>>) -> Result<()> {
+fn client_listen(mut socket: TcpStream, addr: SocketAddr, out_stream: mpsc::Sender<Message>) -> Result<()> {
     
     let mut buff = vec![0; msg::MSG_SIZE];
 
@@ -75,9 +75,13 @@ fn client_listen(mut socket: TcpStream, addr: SocketAddr, out_stream: &Arc<Mutex
             let msg = String::from_utf8(msg).expect("Invalid utf8 message");
             println!("MSG: {}", msg);
 
-            out_stream.lock().unwrap().send(Message::NewJob(Box::new(move || {
-                echo_message(&mut socket, msg);
-            }))).unwrap();
+            out_stream.send(
+                Message::NewJob(
+                    Box::new(move || {
+                        echo_message(&mut socket, msg);
+                    })
+                )
+            ).unwrap();
 
             Ok(())
         },
