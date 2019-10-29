@@ -14,12 +14,3 @@ pub enum Message {
     NewJob(Job),
     Terminate,
 }
-
-pub fn new_job<F>(f: F) -> Message
-    where
-        F: FnOnce() + Send + 'static
-{
-    let job = Box::new(f);
-
-    Message::NewJob(job)
-}
