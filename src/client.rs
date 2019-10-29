@@ -29,21 +29,18 @@ impl Client {
         let dispatch_clone = self.pool.dispatcher.clone();
         let stream_clone = self.stream.try_clone().expect("Unable to clone stream");
         
-        self.pool.dispatcher.execute(move || {
+        self.pool.dispatcher.execute_loop(move || {
             
-            loop {
-
-                let mut msg = String::new();
-                println!("Type a message!");
-                let _buff_size = std::io::stdin().read_line(&mut msg).unwrap();
-
-                let stream_clone = stream_clone.try_clone().expect("Failed to clone stream");
             
-                dispatch_clone.execute(move || {
-                    send_msg(&msg, &stream_clone.try_clone().expect("Failed to clone stream"));
-                });
+            let mut msg = String::new();
+            println!("Type a message!");
+            let _buff_size = std::io::stdin().read_line(&mut msg).unwrap();
 
-            }
+            let stream_clone = stream_clone.try_clone().expect("Failed to clone stream");
+        
+            dispatch_clone.execute(move || {
+                send_msg(&msg, &stream_clone.try_clone().expect("Failed to clone stream"));
+            });
             
         });
 

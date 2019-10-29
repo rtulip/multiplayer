@@ -51,6 +51,7 @@ impl Drop for ThreadPool {
 
         for _ in &mut self.workers {
             self.dispatcher.send(job::Message::Terminate);
+            self.dispatcher.send_term.send(job::Message::Terminate).unwrap();
         }
 
         println!("Shutting down all workers.");
