@@ -1,9 +1,7 @@
 use std::thread;
-use std::sync::mpsc;
-use std::sync::Arc;
-use std::sync::Mutex;
+use std::sync::{mpsc, Arc, Mutex};
 
-use crate::threading::threadpool::Message;
+use crate::threading::job;
 
 pub struct Worker {
     pub id: usize,
@@ -11,7 +9,7 @@ pub struct Worker {
 }
 
 impl Worker {
-    pub fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Message>>>) ->
+    pub fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<job::Message>>>) ->
         Worker {
 
         let thread = thread::spawn(move || loop {
@@ -19,12 +17,11 @@ impl Worker {
             let message = receiver.lock().unwrap().recv().unwrap();
 
             match message {
-                Message::NewJob(job) => {
+                job::Message::NewJob(job) => {
                     println!("Worker {} got a job; executing.", id);
-
                     job.call_box();
                 },
-                Message::Terminate => {
+                job::Message::Terminate => {
                     println!("Worker {} was told to terminate.", id);
                     break;
                 },

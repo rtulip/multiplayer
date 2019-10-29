@@ -20,4 +20,4 @@ impl error::Error for ClientDisconnectError {
     } 
 }
 
-type Result<T> = std::result::Result<T, ClientDisconnectError>;
+pub type ConnectionStatus = std::result::Result<(), ClientDisconnectError>;

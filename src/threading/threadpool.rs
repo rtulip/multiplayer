@@ -4,27 +4,12 @@ use std::sync::Mutex;
 
 use crate::threading::worker::Worker;
 use crate::threading::dispatcher::Dispatcher;
-use crate::threading::job::Job;
-
-pub enum Message {
-    NewJob(Job),
-    Terminate,
-}
-
-pub fn new_job<F>(f: F) -> Message
-    where
-        F: FnOnce() + Send + 'static
-{
-    let job = Box::new(f);
-
-    Message::NewJob(job)
-}
+use crate::threading::job;
 
 pub struct ThreadPool {
     workers: Vec<Worker>,
     pub dispatcher: Dispatcher,
 }
-
 
 impl ThreadPool {
     /// Create a new ThreadPool.
@@ -61,7 +46,7 @@ impl Drop for ThreadPool {
         println!("Sending terminate message to all workers.");
 
         for _ in &mut self.workers {
-            self.dispatcher.send(Message::Terminate);
+            self.dispatcher.send(job::Message::Terminate);
         }
 
         println!("Shutting down all workers.");

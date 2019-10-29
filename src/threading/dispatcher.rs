@@ -1,9 +1,9 @@
-use crate::threading::threadpool::Message;
+use crate::threading::job;
 use std::sync::mpsc;
 
 #[derive(Clone)]
 pub struct Dispatcher{
-    pub sender: mpsc::Sender<Message>,
+    pub sender: mpsc::Sender<job::Message>,
 }
 
 impl Dispatcher{
@@ -14,10 +14,10 @@ impl Dispatcher{
     {
         let job = Box::new(f);
 
-        self.sender.send(Message::NewJob(job)).unwrap();
+        self.sender.send(job::Message::NewJob(job)).unwrap();
     }
 
-    pub fn send(&self, msg: Message){
+    pub fn send(&self, msg: job::Message){
         self.sender.send(msg).unwrap();
     }
 
