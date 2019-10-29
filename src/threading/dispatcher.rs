@@ -20,9 +20,10 @@ impl Dispatcher{
         self.sender.send(job::Message::NewJob(job)).unwrap();
     }
 
-    pub fn execute_loop<F>(&self, mut f: F)
+    pub fn execute_loop<F, T, E>(&self, mut f: F)
         where
-            F: FnMut() + Send + 'static
+            F: FnMut() -> Result<T, E> + Send + 'static,
+            E: std::error::Error,
     {
         let rcv = Arc::clone(&self.recv_term);
 
@@ -32,7 +33,15 @@ impl Dispatcher{
 
             match result {
                 Ok(_) => break,
-                Err(_) => f(),
+                Err(_) => {
+                    match f() {
+                        Err(e) => {
+                            println!("{}", e);
+                            break;
+                        },
+                        _ => (),
+                    }
+                }
             }
 
         });

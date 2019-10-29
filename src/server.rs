@@ -31,14 +31,8 @@ impl Server {
                 
                 let stream_clone = stream.try_clone().expect("Unable to clone stream");
                 let dispatch_clone = self.pool.dispatcher.clone();
-                self.pool.dispatcher.execute(move || loop {
-                    match client_listen(stream_clone.try_clone().expect("unable to clone stream"), addr, dispatch_clone.clone()) {
-                        Ok(()) => (),
-                        Err(e) => {
-                            println!("{}", e);
-                            break;
-                        },
-                    }
+                self.pool.dispatcher.execute_loop(move || {
+                    client_listen(stream_clone.try_clone().expect("unable to clone stream"), addr, dispatch_clone.clone())
                 });
                 
             }

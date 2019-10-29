@@ -3,6 +3,7 @@ use std::net::TcpStream;
 
 use crate::threading::threadpool;
 use crate::MSG_SIZE;
+use crate::errors::InputHandleError;
 
 pub struct Client {
 
@@ -31,16 +32,17 @@ impl Client {
         
         self.pool.dispatcher.execute_loop(move || {
             
-            let mut msg = String::new();
-            println!("Type a message!");
-            let _buff_size = std::io::stdin().read_line(&mut msg).unwrap();
+            match read_input_line(){
+                Ok(msg) => {
+                    let s_clone = stream_clone.try_clone().expect("Unable to clone stream");
+                    dispatch_clone.execute(move || {
+                        send_msg(&msg, &s_clone.try_clone().expect("Failed to clone stream"));
+                    });
+                    Ok(())
+                },
+                Err(e) => Err(e),
 
-            let stream_clone = stream_clone.try_clone().expect("Failed to clone stream");
-        
-            dispatch_clone.execute(move || {
-                send_msg(&msg, &stream_clone.try_clone().expect("Failed to clone stream"));
-            });
-            
+            }
         });
 
         loop {
@@ -79,4 +81,13 @@ fn receive_msg(buff: &Vec<u8>) {
 fn send_msg(string: &String, mut out_stream: &TcpStream) {
     let buff = string.clone().into_bytes();
     out_stream.write_all(&buff).expect("Problem sending message");
+}
+
+fn read_input_line() -> Result<String, InputHandleError>{
+    let mut msg = String::new();
+    println!("Type a message!");
+    match std::io::stdin().read_line(&mut msg){
+        Ok(_buff_size) => return Ok(msg),
+        Err(_) => Err(InputHandleError), 
+    }
 }
