@@ -66,7 +66,7 @@ fn client_listen(mut socket: TcpStream, addr: SocketAddr, dispatch: dispatcher::
             println!("MSG: {}", msg);
 
             dispatch.execute(move || {
-                echo_message(&mut socket, msg);
+                echo_message(&mut socket, &msg);
             });
 
             Ok(())
@@ -80,7 +80,7 @@ fn client_listen(mut socket: TcpStream, addr: SocketAddr, dispatch: dispatcher::
 
 }
 
-fn echo_message(socket: &mut TcpStream, message: String){
+fn echo_message(socket: &mut TcpStream, message: &String){
 
     let buff = message.clone().into_bytes();
     socket.write_all(&buff).expect("Failed to write to socket!");
