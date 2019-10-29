@@ -1,7 +1,5 @@
 use std::io::prelude::*;
-use std::sync::mpsc;
 use std::net::TcpStream;
-use std::thread;
 
 use crate::threading::threadpool;
 use crate::MSG_SIZE;
