@@ -2,6 +2,7 @@ extern crate multiplayer;
 use multiplayer::threading::threadpool::{ThreadPool, new_job};
 use multiplayer::threading::dispatcher::Dispatcher;
 use multiplayer::msg;
+use multiplayer::errors::ClientDisconnectError;
 use std::net::{TcpListener, TcpStream, SocketAddr};
 use std::io::prelude::*;
 
@@ -31,27 +32,9 @@ fn main() {
 
 }
 
-type Result<T> = std::result::Result<T, ClientDisconnectError>;
 
-#[derive(Debug, Clone)]
-struct ClientDisconnectError{
-    addr: SocketAddr,
-}
 
-impl std::fmt::Display for ClientDisconnectError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Client {} Disconnected", self.addr)
-    }
-}
-
-impl std::error::Error for ClientDisconnectError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        // Generic error, underlying cause isn't tracked.
-        None
-    } 
-}
-
-fn client_listen(mut socket: TcpStream, addr: SocketAddr, out_stream: Dispatcher) -> Result<()> {
+fn client_listen(mut socket: TcpStream, addr: SocketAddr, out_stream: Dispatcher) -> Result<(), ClientDisconnectError> {
     
     let mut buff = vec![0; msg::MSG_SIZE];
 
