@@ -40,6 +40,7 @@ impl Server {
                         },
                     }
                 });
+                
             }
 
         }
@@ -54,14 +55,15 @@ fn client_listen(mut socket: TcpStream, addr: SocketAddr, dispatch: dispatcher::
 
     match socket.read(&mut buff){
         Ok(0) => {
+            
             Err(ClientDisconnectError{
                 addr,
             })
+
         },
         Ok(_) => {
+            
             let msg = buff.clone().into_iter().take_while(|&x| x!= 0).collect::<Vec<_>>();
-
-            println!("\nMSG as Bytes:   {:?}", msg.clone());
             let msg = String::from_utf8(msg).expect("Invalid utf8 message");
             println!("MSG: {}", msg);
 
@@ -70,11 +72,14 @@ fn client_listen(mut socket: TcpStream, addr: SocketAddr, dispatch: dispatcher::
             });
 
             Ok(())
+
         },
         Err(_) => {
+            
             Err(ClientDisconnectError{
                 addr,
             })
+
         }
     }
 

@@ -31,7 +31,6 @@ impl Client {
         
         self.pool.dispatcher.execute_loop(move || {
             
-            
             let mut msg = String::new();
             println!("Type a message!");
             let _buff_size = std::io::stdin().read_line(&mut msg).unwrap();
