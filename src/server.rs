@@ -1,7 +1,7 @@
 use std::net::{TcpListener, TcpStream, SocketAddr};
 use crate::threading::{threadpool, dispatcher};
-use crate::msg;
 use crate::errors::{ConnectionStatus, ClientDisconnectError};
+use crate::MSG_SIZE;
 use std::io::prelude::*;
 
 pub struct Server {
@@ -50,7 +50,7 @@ impl Server {
 
 fn client_listen(mut socket: TcpStream, addr: SocketAddr, dispatch: dispatcher::Dispatcher) -> ConnectionStatus {
     
-    let mut buff = vec![0; msg::MSG_SIZE];
+    let mut buff = vec![0; MSG_SIZE];
 
     match socket.read(&mut buff){
         Ok(0) => {
