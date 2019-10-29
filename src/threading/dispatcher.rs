@@ -1,9 +1,11 @@
 use crate::threading::job;
-use std::sync::mpsc;
+use std::sync::{mpsc,Arc,Mutex};
 
 #[derive(Clone)]
 pub struct Dispatcher{
     pub sender: mpsc::Sender<job::Message>,
+    pub send_term: mpsc::Sender<job::Message>,
+    pub recv_term: Arc<Mutex<mpsc::Receiver<job::Message>>>,
 }
 
 impl Dispatcher{

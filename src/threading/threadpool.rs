@@ -22,21 +22,25 @@ impl ThreadPool {
     pub fn new(size: usize) -> ThreadPool {
         assert!(size > 0);
 
+        let (send_term, recv_term) = mpsc::channel();
+        let recv_term = Arc::new(Mutex::new(recv_term));
+
         let (sender, receiver) = mpsc::channel();
-
         let receiver = Arc::new(Mutex::new(receiver));
-
         let mut workers = Vec::with_capacity(size);
-
         for id in 0..size {
             workers.push(Worker::new(id, Arc::clone(&receiver)));
         }
+
+        let dispatcher = Dispatcher {
+            sender,
+            send_term,
+            recv_term,            
+        };
         
         ThreadPool {
             workers,
-            dispatcher: Dispatcher{
-                sender
-            },
+            dispatcher,
         }
     }
 }
