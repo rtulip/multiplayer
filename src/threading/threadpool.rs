@@ -3,6 +3,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use crate::threading::worker::Worker;
+use crate::threading::dispatcher::Dispatcher;
 use crate::threading::job::Job;
 
 pub enum Message {
@@ -21,7 +22,7 @@ pub fn new_job<F>(f: F) -> Message
 
 pub struct ThreadPool {
     workers: Vec<Worker>,
-    pub sender: mpsc::Sender<Message>,
+    pub dispatcher: Dispatcher,
 }
 
 
@@ -48,17 +49,10 @@ impl ThreadPool {
         
         ThreadPool {
             workers,
-            sender,
+            dispatcher: Dispatcher{
+                sender
+            },
         }
-    }
-
-    pub fn execute<F>(&self, f: F)
-        where
-            F: FnOnce() + Send + 'static
-    {
-        let job = Box::new(f);
-
-        self.sender.send(Message::NewJob(job)).unwrap();
     }
 }
 
@@ -67,7 +61,7 @@ impl Drop for ThreadPool {
         println!("Sending terminate message to all workers.");
 
         for _ in &mut self.workers {
-            self.sender.send(Message::Terminate).unwrap();
+            self.dispatcher.send(Message::Terminate);
         }
 
         println!("Shutting down all workers.");

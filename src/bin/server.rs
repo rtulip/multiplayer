@@ -1,7 +1,7 @@
 extern crate multiplayer;
-use multiplayer::threading::threadpool::{ThreadPool, Message, new_job};
+use multiplayer::threading::threadpool::{ThreadPool, new_job};
+use multiplayer::threading::dispatcher::Dispatcher;
 use multiplayer::msg;
-use std::sync::mpsc;
 use std::net::{TcpListener, TcpStream, SocketAddr};
 use std::io::prelude::*;
 
@@ -15,10 +15,9 @@ fn main() {
         if let Ok((stream, addr)) = listener.accept(){
             
             let stream_clone = stream.try_clone().expect("Unable to clone stream");
-            let sender_clone = pool.sender.clone();
-    
-            pool.execute(move || loop {
-                match client_listen(stream_clone.try_clone().expect("unable to clone stream"), addr, sender_clone.clone()) {
+            let dispatch_clone = pool.dispatcher.clone();
+            pool.dispatcher.execute(move || loop {
+                match client_listen(stream_clone.try_clone().expect("unable to clone stream"), addr, dispatch_clone.clone()) {
                     Ok(()) => (),
                     Err(e) => {
                         println!("{}", e);
@@ -52,7 +51,7 @@ impl std::error::Error for ClientDisconnectError {
     } 
 }
 
-fn client_listen(mut socket: TcpStream, addr: SocketAddr, out_stream: mpsc::Sender<Message>) -> Result<()> {
+fn client_listen(mut socket: TcpStream, addr: SocketAddr, out_stream: Dispatcher) -> Result<()> {
     
     let mut buff = vec![0; msg::MSG_SIZE];
 
@@ -73,7 +72,7 @@ fn client_listen(mut socket: TcpStream, addr: SocketAddr, out_stream: mpsc::Send
                 new_job(move || {
                     echo_message(&mut socket, msg);
                 })
-            ).unwrap();
+            );
 
             Ok(())
         },
