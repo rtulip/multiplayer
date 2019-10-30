@@ -73,6 +73,7 @@ impl Server {
     ///         * 'Send Message' - Sends a message to a connected client.
     pub fn start(self) {
 
+        // Publish data continually to each client. 
         let map_mutex = Arc::clone(&self.clients);
         let dispatch = self.pool.dispatcher.clone();
         self.pool.dispatcher.execute_loop(move || {
@@ -85,6 +86,7 @@ impl Server {
 
             if let Ok((stream, addr)) = self.listener.accept(){
                 
+                // Dispatch add_client().
                 let stream_clone = stream.try_clone().expect("Unable to clone stream");
                 let addr_clone = addr.clone();
                 let map_clone = Arc::clone(&self.clients);
@@ -92,6 +94,7 @@ impl Server {
                     add_client(addr_clone, stream_clone, map_clone);
                 });
 
+                // Dispatch client_listen() on loop.
                 let dispatch_clone = self.pool.dispatcher.clone();
                 let map_clone = Arc::clone(&self.clients);
                 self.pool.dispatcher.execute_loop(move || {
@@ -111,13 +114,28 @@ impl Server {
 
 }
 
+/// Listen to a client on a socket.
+/// 
+/// # Arguments
+/// 
+/// * 'mut socket' - The TcpStream of the client.
+/// * 'addr' - The SocketAddr of the Client.
+/// * 'map_mutex' - A reference to the ClientHashmap.
+/// * 'dispatch' - A reference to a Dispatcher.
+/// 
+/// # Returns
+/// 
+/// * ConnectionStatus
 fn client_listen(mut socket: TcpStream, addr: SocketAddr, map_mutex: &ClientHashmap, dispatch: &dispatcher::Dispatcher) -> errors::ConnectionStatus {
     
     let mut buff = vec![0; MSG_SIZE];
 
+    // Read from socket.
     match socket.read(&mut buff){
+        // Socket Disconnected.
         Ok(0) => {
             
+            // Dispatch remove_client() to remove this client from the hashmap.
             let map_clone = Arc::clone(map_mutex);
             dispatch.execute(move || {
                 remove_client(&addr, &map_clone);
@@ -127,21 +145,26 @@ fn client_listen(mut socket: TcpStream, addr: SocketAddr, map_mutex: &ClientHash
             })
 
         },
+        // Successfully read to the buffer.
         Ok(_) => {
             
             let msg = buff.clone().into_iter().take_while(|&x| x!= 0).collect::<Vec<_>>();
             let msg = String::from_utf8(msg).expect("Invalid utf8 message");
             println!("MSG: {}", msg);
 
+            // Dispatch send_message() to echo the message to the client.
             dispatch.execute(move || {
                 send_message(&mut socket, &msg);
             });
 
+            // Say everything is Ok
             Ok(())
 
         },
+        // Failed to read to buffer.
         Err(_) => {
             
+            // Dispatch remove client to remove this client from the hashmap.
             let map_clone = Arc::clone(map_mutex);
             dispatch.execute(move || {
                 remove_client(&addr, &map_clone);
@@ -155,6 +178,12 @@ fn client_listen(mut socket: TcpStream, addr: SocketAddr, map_mutex: &ClientHash
 
 }
 
+/// Send a message to a socket
+/// 
+/// # Arguments
+/// 
+/// * 'socket' - A mutable reference to a TcpStream.
+/// * 'message' - A reference to the String which is to be sent.
 fn send_message(socket: &mut TcpStream, message: &String){
 
     let buff = message.clone().into_bytes();
@@ -162,6 +191,13 @@ fn send_message(socket: &mut TcpStream, message: &String){
 
 }
 
+/// Adds a client to the HashMap.
+/// 
+/// # Arguments
+///
+/// * 'addr' - The SocketAddr which will serve as a key to the hashmap.
+/// * 'socket' - The TcpStream of the client which will serve as the value to the hashmap.
+/// * 'map_mutex' - A ClientHashMap where the client will be inserted.
 fn add_client(addr: SocketAddr, socket: TcpStream, map_mutex: ClientHashmap){
 
     let mut clients = map_mutex.lock().unwrap();
@@ -174,6 +210,12 @@ fn add_client(addr: SocketAddr, socket: TcpStream, map_mutex: ClientHashmap){
 
 }
 
+/// Removes a client from the HashMap.
+/// 
+/// # Arguments
+///
+/// * 'addr' - The key of the client.
+/// * 'map_mutex' - A ClientHashMap from which the client will be removed.
 fn remove_client(addr: &SocketAddr, map_mutex: &ClientHashmap) {
 
     let mut clients = map_mutex.lock().unwrap();
@@ -185,6 +227,14 @@ fn remove_client(addr: &SocketAddr, map_mutex: &ClientHashmap) {
 
 }
 
+/// Writes "Game Data" to each client periodically.
+/// 
+/// # Arguments
+/// * 'map_mutex' - A reference to a ClientHashMap from which each client connection will be sent a message.
+/// * 'diapatch' - A reference to a dispatcher which will execute the sending of messages.
+/// 
+/// # Returns
+/// * ExpectedSuccess - This function shouldn't break out of a loop unless something very strange happens.
 fn publish_data(map_mutex: &ClientHashmap, dispatch: &dispatcher::Dispatcher) -> errors::ExpectedSuccess {
 
     let mut clients = map_mutex.lock().unwrap();
