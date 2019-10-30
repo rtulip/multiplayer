@@ -6,8 +6,7 @@ use std::time::Duration;
 use std::thread;
 
 use crate::threading::{threadpool, dispatcher};
-use crate::errors;
-use crate::MSG_SIZE;
+use crate::{errors,message};
 
 /// All client connections are held in a hashmap. The key to this Hashmap is the socket address, and the value is the TcpStream.Arc
 /// Since multiple threads are going to be trying to add, remove, and maniuplate the values in hashmap, it must be protected behind
@@ -129,7 +128,7 @@ impl Server {
 /// * ConnectionStatus
 fn client_listen(mut socket: TcpStream, addr: SocketAddr, map_mutex: &ClientHashmap, dispatch: &dispatcher::Dispatcher) -> errors::ConnectionStatus {
     
-    let mut buff = vec![0; MSG_SIZE];
+    let mut buff = vec![0; message::MSG_SIZE];
 
     // Read from socket.
     match socket.read(&mut buff){
@@ -155,7 +154,7 @@ fn client_listen(mut socket: TcpStream, addr: SocketAddr, map_mutex: &ClientHash
 
             // Dispatch send_message() to echo the message to the client.
             dispatch.execute(move || {
-                send_message(&mut socket, &msg);
+                message::send_text_message(&mut socket, msg);
             });
 
             // Say everything is Ok
@@ -176,19 +175,6 @@ fn client_listen(mut socket: TcpStream, addr: SocketAddr, map_mutex: &ClientHash
 
         }
     }
-
-}
-
-/// Send a message to a socket
-/// 
-/// # Arguments
-/// 
-/// * 'socket' - A mutable reference to a TcpStream.
-/// * 'message' - A reference to the String which is to be sent.
-fn send_message(socket: &mut TcpStream, message: &String){
-
-    let buff = message.clone().into_bytes();
-    socket.write_all(&buff).expect("Failed to write to socket!");
 
 }
 
@@ -243,8 +229,7 @@ fn publish_data(map_mutex: &ClientHashmap, dispatch: &dispatcher::Dispatcher) ->
 
         let mut socket_clone = socket.try_clone().expect("Failed to clone socket");
         dispatch.execute(move || {
-            let msg = "Game data".to_owned();
-            send_message(&mut socket_clone, &msg);
+            message::send_text_message(&mut socket_clone, "Game Data");
         })
 
     }
