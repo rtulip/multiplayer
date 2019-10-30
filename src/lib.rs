@@ -4,4 +4,4 @@ pub mod server;
 pub mod threading;
 pub mod errors;
 
-pub const MSG_SIZE: usize = 32;
+pub const MSG_SIZE: usize = 4096;

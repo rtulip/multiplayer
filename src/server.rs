@@ -5,6 +5,8 @@ use std::collections::HashMap;
 use std::time::Duration;
 use std::thread;
 
+use serde_json::json;
+
 use crate::threading::{threadpool, dispatcher};
 use crate::errors;
 use crate::MSG_SIZE;
@@ -243,8 +245,13 @@ fn publish_data(map_mutex: &ClientHashmap, dispatch: &dispatcher::Dispatcher) ->
 
         let mut socket_clone = socket.try_clone().expect("Failed to clone socket");
         dispatch.execute(move || {
-            let msg = "Game data".to_owned();
-            send_message(&mut socket_clone, &msg);
+            
+            let msg = json!({
+                "Type": "Message",
+                "Text": "Game Data!"
+            });
+
+            send_message(&mut socket_clone, &msg.to_string());
         })
 
     }
