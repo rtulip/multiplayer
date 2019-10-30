@@ -5,7 +5,7 @@ pub const MSG_SIZE: usize = 4096;
 #[derive(Deserialize, Serialize)]
 pub struct TextMessage {
     msg_type: String,
-    text_utf8: String,
+    text: String,
 }
 
 impl TextMessage{
@@ -14,9 +14,13 @@ impl TextMessage{
 
         TextMessage{
             msg_type: "Text".to_owned(),
-            text_utf8: text.into(),
+            text: text.into(),
         }
 
+    }
+    
+    pub fn handle(&self) {
+        println!("Received Text Message: {}", self.text);
     }
 
 }

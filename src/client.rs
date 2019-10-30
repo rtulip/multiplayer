@@ -1,8 +1,11 @@
 use std::io::prelude::*;
 use std::net::TcpStream;
 
-use crate::threading::threadpool;
-use crate::message::MSG_SIZE;
+use serde_json::Value;
+use serde_json;
+
+use crate::threading::{threadpool, dispatcher};
+use crate::message;
 use crate::errors::InputHandleError;
 
 pub struct Client {
@@ -47,7 +50,7 @@ impl Client {
 
         loop {
             
-            let mut buff = vec![0; MSG_SIZE];
+            let mut buff = vec![0; message::MSG_SIZE];
 
             match self.stream.read(&mut buff) {
                 Ok(0) => {
@@ -55,8 +58,9 @@ impl Client {
                     break;
                 },
                 Ok(_) => {
+                    let dispatch_clone = self.pool.dispatcher.clone();
                     self.pool.dispatcher.execute(move || {
-                        receive_msg(&buff);
+                        receive_msg(&buff, dispatch_clone);
                     });
                 },
                 Err(_) => {
@@ -71,11 +75,27 @@ impl Client {
 
 }
 
-fn receive_msg(buff: &Vec<u8>) {
+fn receive_msg(buff: &Vec<u8>, dispatch: dispatcher::Dispatcher) {
     
     let msg = buff.clone().into_iter().take_while(|&x| x!= 0).collect::<Vec<_>>();
     let string = String::from_utf8(msg).expect("Invlaid utf8 message");
-    println!("Recieved: {}", string);
+
+    let v: Value = serde_json::from_str(string.as_str()).expect("Unable to convert to json");
+
+    match &v["msg_type"] {
+        Value::String(text) => {
+            match text.as_ref() {
+                "Text" => {
+                    let text_msg: message::TextMessage = serde_json::from_value(v).expect("Invalid Text Message");
+                    dispatch.execute(move ||{
+                        text_msg.handle();
+                    });
+                },
+                _ => println!("Unknown Message type!"),
+            }
+        },  
+        _ => println!("Unrecognized Message!"),
+    }
 }
 
 fn send_msg(string: &String, mut out_stream: &TcpStream) {
