@@ -12,6 +12,21 @@ pub struct Dispatcher {
 
 impl Dispatcher{
 
+    /// Sends a one-time job to a worker.
+    /// 
+    /// # Example
+    /// 
+    /// ```
+    /// extern crate multiplayer;
+    /// use multiplayer::threading::threadpool;
+    /// 
+    /// let pool = threadpool::ThreadPool::new(5);
+    /// for i in 0..10 {
+    ///     pool.dispatcher.execute(move || {
+    ///        println!("Num: {}", i);
+    ///     });
+    /// }
+    /// ```
     pub fn execute<F>(&self, f: F)
         where
             F: FnOnce() + Send + 'static
@@ -20,6 +35,30 @@ impl Dispatcher{
         self.sender.send(job::Message::NewJob(job)).unwrap();
     }
 
+    /// Sends a job to a worker which will be repeated until an error is thrown.
+    /// 
+    /// # Example
+    /// 
+    /// ```
+    /// extern crate multiplayer;
+    /// use multiplayer::threading::threadpool;
+    /// use multiplayer::errors;
+    /// use std::time::Duration;
+    /// use std::thread;
+    /// 
+    /// fn repeat(num: &i32) -> errors::ExpectedSuccess {
+    ///     println!("Num: {}", num);
+    ///     thread::sleep(Duration::from_secs(1));
+    ///     Ok(())
+    /// }
+    /// 
+    /// let pool = threadpool::ThreadPool::new(5);
+    /// for i in 0..3 {
+    ///     pool.dispatcher.execute_loop(move || {
+    ///         repeat(&i)
+    ///     });
+    /// }
+    /// ```
     pub fn execute_loop<F, T, E>(&self, mut f: F)
         where
             F: FnMut() -> Result<T, E> + Send + 'static,
@@ -50,6 +89,8 @@ impl Dispatcher{
         self.sender.send(job::Message::NewJob(job2)).unwrap();
     }
 
+    /// Sends a generic job to a worker.
+    /// Used to terminate the workers.
     pub fn send(&self, msg: job::Message){
         self.sender.send(msg).unwrap();
     }
