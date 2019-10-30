@@ -38,7 +38,8 @@ impl Server {
     /// use multiplayer::server;
     /// 
     /// let server = server::Server::new("127.0.0.1:7878", 100);
-    /// server.start();
+    /// // server.start();
+    /// 
     /// ```
     ///
     pub fn new(ip: &str, size: usize) -> Server {
