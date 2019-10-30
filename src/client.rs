@@ -37,9 +37,9 @@ impl Client {
             
             match read_input_line(){
                 Ok(msg) => {
-                    let s_clone = stream_clone.try_clone().expect("Unable to clone stream");
+                    let mut s_clone = stream_clone.try_clone().expect("Unable to clone stream");
                     dispatch_clone.execute(move || {
-                        send_msg(&msg, &s_clone.try_clone().expect("Failed to clone stream"));
+                        send_message(&mut s_clone, msg)
                     });
                     Ok(())
                 },
@@ -98,9 +98,19 @@ fn receive_msg(buff: &Vec<u8>, dispatch: dispatcher::Dispatcher) {
     }
 }
 
-fn send_msg(string: &String, mut out_stream: &TcpStream) {
-    let buff = string.clone().into_bytes();
-    out_stream.write_all(&buff).expect("Problem sending message");
+/// Send a message to a socket
+/// 
+/// # Arguments
+/// 
+/// * 'socket' - A mutable reference to a TcpStream.
+/// * 'message' - A reference to the String which is to be sent.
+fn send_message<S: Into<String>>(socket: &mut TcpStream, message: S){
+
+    let text_msg = message::TextMessage::new(message);
+    let text_msg = serde_json::to_string(&text_msg).expect("Unable to convert message to json");
+    let buff = text_msg.into_bytes();
+    socket.write_all(&buff).expect("Failed to write to socket!");
+
 }
 
 fn read_input_line() -> Result<String, InputHandleError>{
