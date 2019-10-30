@@ -1,10 +1,17 @@
 use std::net::{TcpListener, TcpStream, SocketAddr};
 use crate::threading::{threadpool, dispatcher};
-use crate::errors::{ConnectionStatus, ClientDisconnectError};
+use crate::errors;
 use crate::MSG_SIZE;
 use std::io::prelude::*;
+use std::sync::{Arc, Mutex};
+use std::collections::HashMap;
+use std::time::Duration;
+use std::thread;
+
+type ClientHashmap = Arc<Mutex<HashMap<SocketAddr, TcpStream>>>;
 
 pub struct Server {
+    clients: ClientHashmap,
     listener: TcpListener,
     pool: threadpool::ThreadPool,
 }
@@ -16,7 +23,11 @@ impl Server {
         let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
         let pool = threadpool::ThreadPool::new(size);
 
+        let clients = HashMap::new();
+        let clients = Arc::new(Mutex::new(clients));
+
         Server{
+            clients,
             listener,
             pool,
         }    
@@ -25,14 +36,34 @@ impl Server {
 
     pub fn start(self) {
 
+        let map_mutex = Arc::clone(&self.clients);
+        let dispatch = self.pool.dispatcher.clone();
+        self.pool.dispatcher.execute_loop(move || {
+
+            publish_data(&map_mutex, &dispatch)
+
+        });
+
         loop {
 
             if let Ok((stream, addr)) = self.listener.accept(){
                 
                 let stream_clone = stream.try_clone().expect("Unable to clone stream");
+                let addr_clone = addr.clone();
+                let map_clone = Arc::clone(&self.clients);
+                self.pool.dispatcher.execute(move || {
+                    add_client(addr_clone, stream_clone, map_clone);
+                });
+
                 let dispatch_clone = self.pool.dispatcher.clone();
+                let map_clone = Arc::clone(&self.clients);
                 self.pool.dispatcher.execute_loop(move || {
-                    client_listen(stream_clone.try_clone().expect("unable to clone stream"), addr, dispatch_clone.clone())
+                    client_listen(
+                        stream.try_clone().expect("Uable to clone stream"), 
+                        addr,
+                        &map_clone,
+                        &dispatch_clone
+                    )
                 });
                 
             }
@@ -43,14 +74,18 @@ impl Server {
 
 }
 
-fn client_listen(mut socket: TcpStream, addr: SocketAddr, dispatch: dispatcher::Dispatcher) -> ConnectionStatus {
+fn client_listen(mut socket: TcpStream, addr: SocketAddr, map_mutex: &ClientHashmap, dispatch: &dispatcher::Dispatcher) -> errors::ConnectionStatus {
     
     let mut buff = vec![0; MSG_SIZE];
 
     match socket.read(&mut buff){
         Ok(0) => {
             
-            Err(ClientDisconnectError{
+            let map_clone = Arc::clone(map_mutex);
+            dispatch.execute(move || {
+                remove_client(&addr, &map_clone);
+            });
+            Err(errors::ClientDisconnectError{
                 addr,
             })
 
@@ -70,7 +105,11 @@ fn client_listen(mut socket: TcpStream, addr: SocketAddr, dispatch: dispatcher::
         },
         Err(_) => {
             
-            Err(ClientDisconnectError{
+            let map_clone = Arc::clone(map_mutex);
+            dispatch.execute(move || {
+                remove_client(&addr, &map_clone);
+            });
+            Err(errors::ClientDisconnectError{
                 addr,
             })
 
@@ -83,5 +122,48 @@ fn echo_message(socket: &mut TcpStream, message: &String){
 
     let buff = message.clone().into_bytes();
     socket.write_all(&buff).expect("Failed to write to socket!");
+
+}
+
+fn add_client(addr: SocketAddr, socket: TcpStream, map_mutex: ClientHashmap){
+
+    let mut clients = map_mutex.lock().unwrap();
+    
+    if let Some(_) = clients.insert(addr, socket){
+        println!("Client {} already in map", addr);
+    } else {
+        println!("Client {} successfully added to map", addr);
+    }
+
+}
+
+fn remove_client(addr: &SocketAddr, map_mutex: &ClientHashmap) {
+
+    let mut clients = map_mutex.lock().unwrap();
+    if let Some(_) = clients.remove(addr){
+        println!("Client {} successfully removed from map", addr);
+    } else {
+        println!("Faile to remove client  {} from map!", addr);
+    }
+
+}
+
+fn publish_data(map_mutex: &ClientHashmap, dispatch: &dispatcher::Dispatcher) -> errors::ExpectedSuccess {
+
+    let mut clients = map_mutex.lock().unwrap();
+    for (addr, socket) in clients.iter_mut(){
+
+        let mut socket_clone = socket.try_clone().expect("Failed to clone socket");
+        dispatch.execute(move || {
+            let msg = "Game data".to_owned();
+            echo_message(&mut socket_clone, &msg);
+        })
+
+    }
+
+    std::mem::drop(clients);
+    thread::sleep(Duration::from_secs(2));
+
+    Ok(())
 
 }
