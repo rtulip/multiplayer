@@ -22,7 +22,6 @@ impl Dispatcher{
     /// 
     /// let pool = threadpool::ThreadPool::new(5);
     /// for i in 0..10 {
-    ///     let num = i.clone();  
     ///     pool.dispatcher.execute(move || {
     ///        println!("Num: {}", i);
     ///     });
@@ -56,11 +55,9 @@ impl Dispatcher{
     /// let pool = threadpool::ThreadPool::new(5);
     /// for i in 0..3 {
     ///     pool.dispatcher.execute_loop(move || {
-    ///         let num = i.clone();
-    ///         repeat(&num)
+    ///         repeat(&i)
     ///     });
     /// }
-    /// 
     /// ```
     pub fn execute_loop<F, T, E>(&self, mut f: F)
         where
