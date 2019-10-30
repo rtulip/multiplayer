@@ -53,15 +53,14 @@ impl Server {
                     add_client(addr_clone, stream_clone, map_clone);
                 });
 
-                let stream_clone = stream.try_clone().expect("Unable to clone stream");
                 let dispatch_clone = self.pool.dispatcher.clone();
                 let map_clone = Arc::clone(&self.clients);
                 self.pool.dispatcher.execute_loop(move || {
                     client_listen(
-                        stream_clone.try_clone().expect("unable to clone stream"), 
+                        stream.try_clone().expect("Uable to clone stream"), 
                         addr,
-                        Arc::clone(&map_clone),
-                        dispatch_clone.clone()
+                        &map_clone,
+                        &dispatch_clone
                     )
                 });
                 
@@ -73,15 +72,16 @@ impl Server {
 
 }
 
-fn client_listen(mut socket: TcpStream, addr: SocketAddr, map_mutex: Arc<Mutex<HashMap<SocketAddr, TcpStream>>>, dispatch: dispatcher::Dispatcher) -> errors::ConnectionStatus {
+fn client_listen(mut socket: TcpStream, addr: SocketAddr, map_mutex: &Arc<Mutex<HashMap<SocketAddr, TcpStream>>>, dispatch: &dispatcher::Dispatcher) -> errors::ConnectionStatus {
     
     let mut buff = vec![0; MSG_SIZE];
 
     match socket.read(&mut buff){
         Ok(0) => {
             
+            let map_clone = Arc::clone(map_mutex);
             dispatch.execute(move || {
-                remove_client(&addr, map_mutex);
+                remove_client(&addr, &map_clone);
             });
             Err(errors::ClientDisconnectError{
                 addr,
@@ -103,8 +103,9 @@ fn client_listen(mut socket: TcpStream, addr: SocketAddr, map_mutex: Arc<Mutex<H
         },
         Err(_) => {
             
+            let map_clone = Arc::clone(map_mutex);
             dispatch.execute(move || {
-                remove_client(&addr, map_mutex);
+                remove_client(&addr, &map_clone);
             });
             Err(errors::ClientDisconnectError{
                 addr,
@@ -134,7 +135,7 @@ fn add_client(addr: SocketAddr, socket: TcpStream, map_mutex: Arc<Mutex<HashMap<
 
 }
 
-fn remove_client(addr: &SocketAddr, map_mutex: Arc<Mutex<HashMap<SocketAddr, TcpStream>>>) {
+fn remove_client(addr: &SocketAddr, map_mutex: &Arc<Mutex<HashMap<SocketAddr, TcpStream>>>) {
 
     let mut clients = map_mutex.lock().unwrap();
     if let Some(_) = clients.remove(addr){
