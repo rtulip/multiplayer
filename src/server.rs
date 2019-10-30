@@ -111,3 +111,14 @@ fn add_client(addr: SocketAddr, socket: TcpStream, map_mutex: Arc<Mutex<HashMap<
     }
 
 }
+
+fn remove_client(addr: &SocketAddr, map_mutex: Arc<Mutex<HashMap<SocketAddr, TcpStream>>>) {
+
+    let mut clients = map_mutex.lock().unwrap();
+    if let Some(_) = clients.remove(addr){
+        println!("Client {} successfully removed from map", addr);
+    } else {
+        println!("FAILED TO REMOVE {} FROM MAP!!!!", addr);
+    }
+
+}
