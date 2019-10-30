@@ -21,7 +21,7 @@ impl Server {
 
         let clients = HashMap::new();
         let clients = Arc::new(Mutex::new(clients));
-        
+
         Server{
             clients,
             listener,
@@ -36,6 +36,13 @@ impl Server {
 
             if let Ok((stream, addr)) = self.listener.accept(){
                 
+                let stream_clone = stream.try_clone().expect("Unable to clone stream");
+                let addr_clone = addr.clone();
+                let map_clone = Arc::clone(&self.clients);
+                self.pool.dispatcher.execute(move || {
+                    add_client(addr_clone, stream_clone, map_clone);
+                });
+
                 let stream_clone = stream.try_clone().expect("Unable to clone stream");
                 let dispatch_clone = self.pool.dispatcher.clone();
                 self.pool.dispatcher.execute_loop(move || {
@@ -90,5 +97,17 @@ fn echo_message(socket: &mut TcpStream, message: &String){
 
     let buff = message.clone().into_bytes();
     socket.write_all(&buff).expect("Failed to write to socket!");
+
+}
+
+fn add_client(addr: SocketAddr, socket: TcpStream, map_mutex: Arc<Mutex<HashMap<SocketAddr, TcpStream>>>){
+
+    let mut clients = map_mutex.lock().unwrap();
+    
+    if let Some(_) = clients.insert(addr, socket){
+        println!("Client {} already in map", addr);
+    } else {
+        println!("Client {} successfully added to map", addr);
+    }
 
 }
