@@ -3,8 +3,11 @@ use crate::threading::{threadpool, dispatcher};
 use crate::errors::{ConnectionStatus, ClientDisconnectError};
 use crate::MSG_SIZE;
 use std::io::prelude::*;
+use std::sync::{Arc, Mutex};
+use std::collections::HashMap;
 
 pub struct Server {
+    clients: Arc<Mutex<HashMap<SocketAddr, TcpStream>>>,
     listener: TcpListener,
     pool: threadpool::ThreadPool,
 }
@@ -16,7 +19,11 @@ impl Server {
         let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
         let pool = threadpool::ThreadPool::new(size);
 
+        let clients = HashMap::new();
+        let clients = Arc::new(Mutex::new(clients));
+        
         Server{
+            clients,
             listener,
             pool,
         }    
