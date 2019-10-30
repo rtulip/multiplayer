@@ -1,26 +1,49 @@
 use std::net::{TcpListener, TcpStream, SocketAddr};
-use crate::threading::{threadpool, dispatcher};
-use crate::errors;
-use crate::MSG_SIZE;
 use std::io::prelude::*;
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 use std::time::Duration;
 use std::thread;
 
+use crate::threading::{threadpool, dispatcher};
+use crate::errors;
+use crate::MSG_SIZE;
+
+/// All client connections are held in a hashmap. The key to this Hashmap is the socket address, and the value is the TcpStream.Arc
+/// Since multiple threads are going to be trying to add, remove, and maniuplate the values in hashmap, it must be protected behind
+/// a mutex.
 type ClientHashmap = Arc<Mutex<HashMap<SocketAddr, TcpStream>>>;
 
+/// Encapsulation of a server
 pub struct Server {
+    /// Servers have a ClientHashmap to asyncronously track client connections.
     clients: ClientHashmap,
+    /// Servers have a TcpListener to listen for new client connections.
     listener: TcpListener,
+    /// Servers have a ThreadPool which dispatches jobs.
     pool: threadpool::ThreadPool,
 }
 
 impl Server {
-
+    /// Returns a new server. 
+    /// 
+    /// # Arguments:
+    ///
+    /// * 'ip' - A string slice which the TcpListener will bind to.
+    /// * 'size' - The size of the ThreadPool. i.e. how many worker threads will be active.
+    /// 
+    /// # Example: 
+    /// ```
+    /// extern crate multiplayer;
+    /// use multiplayer::server;
+    /// 
+    /// let server = server::Server::new("127.0.0.1:7878", 100);
+    /// server.start();
+    /// ```
+    ///
     pub fn new(ip: &str, size: usize) -> Server {
 
-        let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
+        let listener = TcpListener::bind(ip).unwrap();
         let pool = threadpool::ThreadPool::new(size);
 
         let clients = HashMap::new();
@@ -34,6 +57,20 @@ impl Server {
 
     }
 
+    /// Starts the server and various jobs.
+    /// 
+    /// # Jobs
+    /// 
+    /// * 'Publish Data' - Periodically sends data to all connected clients.
+    ///     * Loops until UnexpectedError.
+    ///     * Stars more jobs:
+    ///         * 'Send Message' - Sends a message to a connected client.
+    /// * 'Add Client' - Adds a newly connected client to the ClientHashMap.
+    /// * 'Client Listen' - Listens to incoming messages from a connected client.
+    ///     * Loops until ClientDisconnectError.
+    ///     * Starts more jobs:
+    ///         * 'Remove Client' Removes a client from the ClientHashMap.
+    ///         * 'Send Message' - Sends a message to a connected client.
     pub fn start(self) {
 
         let map_mutex = Arc::clone(&self.clients);
@@ -97,7 +134,7 @@ fn client_listen(mut socket: TcpStream, addr: SocketAddr, map_mutex: &ClientHash
             println!("MSG: {}", msg);
 
             dispatch.execute(move || {
-                echo_message(&mut socket, &msg);
+                send_message(&mut socket, &msg);
             });
 
             Ok(())
@@ -118,7 +155,7 @@ fn client_listen(mut socket: TcpStream, addr: SocketAddr, map_mutex: &ClientHash
 
 }
 
-fn echo_message(socket: &mut TcpStream, message: &String){
+fn send_message(socket: &mut TcpStream, message: &String){
 
     let buff = message.clone().into_bytes();
     socket.write_all(&buff).expect("Failed to write to socket!");
@@ -156,7 +193,7 @@ fn publish_data(map_mutex: &ClientHashmap, dispatch: &dispatcher::Dispatcher) ->
         let mut socket_clone = socket.try_clone().expect("Failed to clone socket");
         dispatch.execute(move || {
             let msg = "Game data".to_owned();
-            echo_message(&mut socket_clone, &msg);
+            send_message(&mut socket_clone, &msg);
         })
 
     }
