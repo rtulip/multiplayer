@@ -154,7 +154,7 @@ fn client_listen(mut socket: TcpStream, addr: SocketAddr, map_mutex: &ClientHash
 
             // Dispatch send_message() to echo the message to the client.
             dispatch.execute(move || {
-                send_message(&mut socket, msg);
+                message::send_text_message(&mut socket, msg);
             });
 
             // Say everything is Ok
@@ -175,21 +175,6 @@ fn client_listen(mut socket: TcpStream, addr: SocketAddr, map_mutex: &ClientHash
 
         }
     }
-
-}
-
-/// Send a message to a socket
-/// 
-/// # Arguments
-/// 
-/// * 'socket' - A mutable reference to a TcpStream.
-/// * 'message' - A reference to the String which is to be sent.
-fn send_message<S: Into<String>>(socket: &mut TcpStream, message: S){
-
-    let text_msg = message::TextMessage::new(message);
-    let text_msg = serde_json::to_string(&text_msg).expect("Unable to convert message to json");
-    let buff = text_msg.into_bytes();
-    socket.write_all(&buff).expect("Failed to write to socket!");
 
 }
 
@@ -244,7 +229,7 @@ fn publish_data(map_mutex: &ClientHashmap, dispatch: &dispatcher::Dispatcher) ->
 
         let mut socket_clone = socket.try_clone().expect("Failed to clone socket");
         dispatch.execute(move || {
-            send_message(&mut socket_clone, "Game Data");
+            message::send_text_message(&mut socket_clone, "Game Data");
         })
 
     }
