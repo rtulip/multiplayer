@@ -8,8 +8,10 @@ use std::collections::HashMap;
 use std::time::Duration;
 use std::thread;
 
+type ClientHashmap = Arc<Mutex<HashMap<SocketAddr, TcpStream>>>;
+
 pub struct Server {
-    clients: Arc<Mutex<HashMap<SocketAddr, TcpStream>>>,
+    clients: ClientHashmap,
     listener: TcpListener,
     pool: threadpool::ThreadPool,
 }
@@ -72,7 +74,7 @@ impl Server {
 
 }
 
-fn client_listen(mut socket: TcpStream, addr: SocketAddr, map_mutex: &Arc<Mutex<HashMap<SocketAddr, TcpStream>>>, dispatch: &dispatcher::Dispatcher) -> errors::ConnectionStatus {
+fn client_listen(mut socket: TcpStream, addr: SocketAddr, map_mutex: &ClientHashmap, dispatch: &dispatcher::Dispatcher) -> errors::ConnectionStatus {
     
     let mut buff = vec![0; MSG_SIZE];
 
@@ -123,7 +125,7 @@ fn echo_message(socket: &mut TcpStream, message: &String){
 
 }
 
-fn add_client(addr: SocketAddr, socket: TcpStream, map_mutex: Arc<Mutex<HashMap<SocketAddr, TcpStream>>>){
+fn add_client(addr: SocketAddr, socket: TcpStream, map_mutex: ClientHashmap){
 
     let mut clients = map_mutex.lock().unwrap();
     
@@ -135,18 +137,18 @@ fn add_client(addr: SocketAddr, socket: TcpStream, map_mutex: Arc<Mutex<HashMap<
 
 }
 
-fn remove_client(addr: &SocketAddr, map_mutex: &Arc<Mutex<HashMap<SocketAddr, TcpStream>>>) {
+fn remove_client(addr: &SocketAddr, map_mutex: &ClientHashmap) {
 
     let mut clients = map_mutex.lock().unwrap();
     if let Some(_) = clients.remove(addr){
         println!("Client {} successfully removed from map", addr);
     } else {
-        println!("FAILED TO REMOVE {} FROM MAP!!!!", addr);
+        println!("Faile to remove client  {} from map!", addr);
     }
 
 }
 
-fn publish_data(map_mutex: &Arc<Mutex<HashMap<SocketAddr, TcpStream>>>, dispatch: &dispatcher::Dispatcher) -> errors::ExpectedSuccess {
+fn publish_data(map_mutex: &ClientHashmap, dispatch: &dispatcher::Dispatcher) -> errors::ExpectedSuccess {
 
     let mut clients = map_mutex.lock().unwrap();
     for (addr, socket) in clients.iter_mut(){
