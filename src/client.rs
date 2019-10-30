@@ -2,7 +2,7 @@ use std::io::prelude::*;
 use std::net::TcpStream;
 
 use crate::threading::threadpool;
-use crate::MSG_SIZE;
+use crate::message::MSG_SIZE;
 use crate::errors::InputHandleError;
 
 pub struct Client {
