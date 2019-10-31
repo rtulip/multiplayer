@@ -1,6 +1,14 @@
 use crate::comms::message;
 use serde_json::Value;
 
+pub struct DefaultHandler;
+
+impl Handler for DefaultHandler{
+    fn handle_text_msg(&mut self, msg: message::TextMessage){}
+    fn handle_request_client_id(&mut self, msg: message::RequestClientID){}
+    fn handle_request_client_id_response(&mut self, msg: message::RequestClientIDResponse){}
+}
+
 pub trait Handler {
 
     fn handle_text_msg(&mut self, msg: message::TextMessage);
@@ -9,10 +17,7 @@ pub trait Handler {
 
     fn receive_json(&mut self, buff: &Vec<u8>) {
         
-        let msg = buff.clone().into_iter().take_while(|&x| x!= 0).collect::<Vec<_>>();
-        let string = String::from_utf8(msg).expect("Invlaid utf8 message");
-
-        let v: Value = serde_json::from_str(string.as_str()).expect("Unable to convert to json");
+        let v = self.parse_json(buff);
         let identifier = v.get("msg_type").unwrap();
         let data = v.get("data").unwrap();
         let data_string = serde_json::to_string(data).expect("Failed to convert data");
@@ -41,6 +46,33 @@ pub trait Handler {
             },
             _ => println!("No Identifier Provided"),
         }
+    }
+
+    fn parse_json(&self, buff: &Vec<u8>) -> Value {
+        let msg = buff.clone().into_iter().take_while(|&x| x!= 0).collect::<Vec<_>>();
+        let string = String::from_utf8(msg).expect("Invlaid utf8 message");
+        let v: Value = serde_json::from_str(string.as_str()).expect("Unable to convert to json");
+        v
+    }
+
+    fn is_type(&self, buff: &Vec<u8>, id: &str) -> bool {
+
+        let v = self.parse_json(buff);
+        let identifier = v.get("msg_type").unwrap();
+        let data = v.get("data").unwrap();
+        let data_string = serde_json::to_string(data).expect("Failed to convert data");
+
+        println!("Received Json: {}", v);
+        match identifier {
+            Value::String(text) => {
+                match text.as_str() {
+                    id => true,
+                    _ => false,
+                }
+            },
+            _ => false,
+        }
+
     }
 
 }

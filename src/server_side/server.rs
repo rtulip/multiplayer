@@ -1,4 +1,4 @@
-use std::net::TcpListener;
+use std::net::{TcpListener, TcpStream};
 use std::io::prelude::*;
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
@@ -9,6 +9,7 @@ use crate::threading::{threadpool, dispatcher};
 use crate::game::controller;
 use crate::errors;
 use crate::comms::message;
+use crate::comms::handler::{Handler, DefaultHandler};
 use crate::server_side::client;
 
 /// All client connections are held in a hashmap. The key to this Hashmap is the socket address, and the value is the TcpStream.Arc
@@ -102,44 +103,79 @@ impl Server {
 
             if let Ok((stream, _addr)) = self.listener.accept(){
                 
-                // let clients = self.clients.lock().unwrap();
-                // let client_id: client::ClientID = std::string::ToString::(clients.len());
-
-                // std::mem::drop(clients);            
-
-                let new_client = client::Client {
-                    id: "client_id".to_owned(),
-                    socket: Some(stream.try_clone().expect("Unabled to clone stream")),
-                    game_id: None,
-                    state: client::ClientState::PendingGame,
-                };
-                
-                // Dispatch add_client().
-                let client_clone = new_client.try_clone().expect("Failed to clone Client");
-                let map_clone = Arc::clone(&self.clients);
-                let games_clone = Arc::clone(&self.games);
                 self.pool.dispatcher.execute(move || {
-                    add_client(client_clone, map_clone, games_clone);
-                });
+                    connect_client(&mut stream.try_clone().expect("Failed to clone stream"));
+                })
 
-                // Dispatch client_listen() on loop.
-                let client_clone = new_client.try_clone().expect("Failed to clone client");
-                let dispatch_clone = self.pool.dispatcher.clone();
-                let map_clone = Arc::clone(&self.clients);
-                let game_clone = Arc::clone(&self.games);
-                self.pool.dispatcher.execute_loop(move || {
-                    client_listen(
-                        new_client.try_clone().expect("Failed to clone new Client"),
-                        &map_clone,
-                        &game_clone,
-                        &dispatch_clone
-                    )
-                });
+                // let new_client = client::Client {
+                //     id: "client_id".to_owned(),
+                //     socket: Some(stream.try_clone().expect("Unabled to clone stream")),
+                //     game_id: None,
+                //     state: client::ClientState::PendingGame,
+                // };
+                
+                // // Dispatch add_client().
+                // let client_clone = new_client.try_clone().expect("Failed to clone Client");
+                // let map_clone = Arc::clone(&self.clients);
+                // let games_clone = Arc::clone(&self.games);
+                // self.pool.dispatcher.execute(move || {
+                //     add_client(client_clone, map_clone, games_clone);
+                // });
+
+                // // Dispatch client_listen() on loop.
+                // let client_clone = new_client.try_clone().expect("Failed to clone client");
+                // let dispatch_clone = self.pool.dispatcher.clone();
+                // let map_clone = Arc::clone(&self.clients);
+                // let game_clone = Arc::clone(&self.games);
+                // self.pool.dispatcher.execute_loop(move || {
+                //     client_listen(
+                //         new_client.try_clone().expect("Failed to clone new Client"),
+                //         &map_clone,
+                //         &game_clone,
+                //         &dispatch_clone
+                //     )
+                // });
                 
             }
 
         }
 
+    }
+
+}
+
+fn connect_client(socket: &mut TcpStream) {
+
+    let handler = DefaultHandler{};
+
+    let msg = message::RequestClientID;
+    message::send_json(msg, socket);
+    let mut buff = vec![0; message::MSG_SIZE];
+    match socket.read(&mut buff){
+        Ok(0) => (),
+        Ok(_) => {
+            
+            if handler.is_type(&buff.clone(), message::REQUEST_CLIENT_ID_RESPONSE_IDENTIFIER) {
+                
+                let v = handler.parse_json(&buff);
+                let data = v.get("data").unwrap();
+                let data_string = serde_json::to_string(data).expect("Failed to convert data");
+
+                let resp: message::RequestClientIDResponse = serde_json::from_str(data_string.as_str()).expect("Improper Resonse Format");
+
+                let new_client = client::Client {
+                    id: resp.id,
+                    message_handler: client::ClientHandler{
+                        socket: Some(socket.try_clone().expect("Failed to clone socket"))
+                    },
+                    game_id: None,
+                    state: client::ClientState::Waiting,
+                };
+
+            }          
+
+        },
+        Err(e) => (),
     }
 
 }
@@ -163,7 +199,7 @@ fn client_listen(
     dispatch: &dispatcher::Dispatcher
     ) -> errors::ConnectionStatus {
 
-    if let Some(mut socket) = client.socket{
+    if let Some(mut socket) = client.message_handler.socket{
         let mut buff = vec![0; message::MSG_SIZE];
 
         match socket.read(&mut buff) {
@@ -217,6 +253,8 @@ fn client_listen(
 
 }
 
+
+
 /// Adds a client to the HashMap.
 /// 
 /// # Arguments
@@ -233,17 +271,6 @@ fn add_client(client: client::Client, map_mutex: ClientHashmap, games: GameHashM
     } else {
         println!("Client {} successfully added to map", id);
     }
-
-    // std::mem::drop(clients);
-
-    // let mut games = games.lock().unwrap();
-    // let game_id: u32 = 0;
-    // if let Some(game) = games.get_mut(&game_id){
-    //     let players = game.model.players.lock().unwrap();
-    //     let len = players.len();
-    //     std::mem::drop(players);
-    //     game.model.add_player(len as u32);
-    // }
 
 }
 
@@ -299,7 +326,7 @@ fn publish_data(games: &GameHashMap, clients: &ClientHashmap, dispatch: &dispatc
             if let Some(client) = clients.get_mut(player_id){
                 
                 let clone = client.try_clone().expect("Failed to clone Client");
-                if let Some(mut socket) = clone.socket{
+                if let Some(mut socket) = clone.message_handler.socket{
 
                     let msg = message::TextMessage::new("Game Data");
                     message::send_json(msg, &mut socket);
