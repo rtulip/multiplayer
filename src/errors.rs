@@ -1,6 +1,6 @@
 use std::error;
 use std::fmt;
-use crate::server::ClientID;
+use crate::servers::server::ClientID;
 
 #[derive(Debug, Clone)]
 pub struct ClientDisconnectError{
