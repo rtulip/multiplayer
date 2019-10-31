@@ -1,45 +1,62 @@
-use specs::{World, WorldExt};
-
+use specs::{World, WorldExt, Builder};
+use std::net::TcpStream;
 
 pub struct GameModel{
-    game_world: World,
+    world: World,
 }
 
 impl GameModel {
 
     pub fn new() -> GameModel {
 
+        let mut world = World::new(); 
+        world.register::<components::Position>();
+        world.register::<components::Velocity>();
+        world.register::<components::Player>();
+
+        world.maintain();
+
         GameModel {
-            game_world: World::new(),
+            world,   
         }
+
+    }
+
+    pub fn add_player(&mut self, socket: TcpStream) {
+
+        self.world.create_entity()
+            .with(components::Position{x: 0.0, y: 0.0})
+            .with(components::Velocity{x: 0.0, y: 0.0})
+            .with(components::Player{socket: Some(socket)})
+            .build();
 
     }
 
 }
 
-mod Components {
+pub mod components {
 
-    use specs::{Builder, Component, ReadStorage, System, VecStorage, World, WorldExt, RunNow};
+    use specs::{Component, VecStorage};
     use std::net::TcpStream;
 
     #[derive(Component, Debug)]
     #[storage(VecStorage)]
-    struct Position {
-        x: f32,
-        y: f32,
+    pub struct Position {
+        pub x: f32,
+        pub y: f32,
     }
 
     #[derive(Component, Debug)]
     #[storage(VecStorage)]
-    struct Velocity {
-        x: f32,
-        y: f32,
+    pub struct Velocity {
+        pub x: f32,
+        pub y: f32,
     }
 
     #[derive(Component, Debug)]
     #[storage(VecStorage)]
-    struct Player {
-        socket: Option<TcpStream>,
+    pub struct Player {
+        pub socket: Option<TcpStream>,
     }
 
 
