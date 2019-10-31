@@ -17,13 +17,13 @@ use crate::server_side::client;
 /// a mutex.
 type GameID = u32;
 type ClientHashmap = Arc<Mutex<HashMap<client::ClientID, client::Client>>>;
-type GameHashMap = Arc<Mutex<HashMap<GameID, controller::GameController>>>;
+type GameHashmap = Arc<Mutex<HashMap<GameID, controller::GameController>>>;
 
 /// Encapsulation of a server
 pub struct Server {
     /// Servers have a ClientHashmap to asyncronously track client connections.
     clients: ClientHashmap,
-    games: GameHashMap,
+    games: GameHashmap,
     /// Servers have a TcpListener to listen for new client connections.
     listener: TcpListener,
     /// Servers have a ThreadPool which dispatches jobs.
@@ -125,7 +125,20 @@ impl Server {
 
 }
 
-fn connect_client(mut socket: TcpStream, dispatch: &dispatcher::Dispatcher, clients: &ClientHashmap, games: &GameHashMap) {
+/// Handles the client identification handshake. a newly opened TcpStream will be sent a RequestClientID message.
+/// The client must tne reply with a RequestClientIDResponse. Any other received message will result in dropping the 
+/// connection. 
+/// 
+/// If the client successfully identifies themself, two new jobs are started. One is to add the new client to the 
+/// ClientHashmap, and the other is to continue to listen to the client.
+/// 
+/// # Arguments
+/// 
+/// * 'socket' - The TcpStream of the new client.
+/// * 'dispatch' - A reference to a Dispatcher.
+/// * 'clients' - A reference to the ClientHashmap,
+/// * 'games' - A reference to the GameHashmap.
+fn connect_client(mut socket: TcpStream, dispatch: &dispatcher::Dispatcher, clients: &ClientHashmap, games: &GameHashmap) {
 
     let handler = DefaultHandler{};
     
@@ -206,7 +219,7 @@ fn connect_client(mut socket: TcpStream, dispatch: &dispatcher::Dispatcher, clie
 fn client_listen(
     client: client::Client,
     map_mutex: &ClientHashmap, 
-    game_mutex: &GameHashMap, 
+    game_mutex: &GameHashmap, 
     dispatch: &dispatcher::Dispatcher
     ) -> errors::ConnectionStatus {
 
@@ -291,7 +304,7 @@ fn add_client(client: client::Client, clients: ClientHashmap){
 ///
 /// * 'addr' - The key of the client.
 /// * 'clients' - A ClientHashMap from which the client will be removed.
-fn remove_client(client_id: &client::ClientID, clients: &ClientHashmap, games: &GameHashMap) {
+fn remove_client(client_id: &client::ClientID, clients: &ClientHashmap, games: &GameHashmap) {
 
     let mut clients = clients.lock().unwrap();
     if let Some(clnt) = clients.remove(client_id){
@@ -325,7 +338,7 @@ fn remove_client(client_id: &client::ClientID, clients: &ClientHashmap, games: &
 /// 
 /// # Returns
 /// * ExpectedSuccess - This function shouldn't break out of a loop unless something very strange happens.
-fn publish_data(games: &GameHashMap, clients: &ClientHashmap, dispatch: &dispatcher::Dispatcher) -> errors::ExpectedSuccess {
+fn publish_data(games: &GameHashmap, clients: &ClientHashmap, dispatch: &dispatcher::Dispatcher) -> errors::ExpectedSuccess {
 
     let mut games = games.lock().unwrap();
     for (_game_id, game) in games.iter_mut(){
@@ -360,7 +373,7 @@ fn publish_data(games: &GameHashMap, clients: &ClientHashmap, dispatch: &dispatc
 
 }
 
-fn dispatch_sys(games: &GameHashMap) -> errors::ExpectedSuccess {
+fn dispatch_sys(games: &GameHashmap) -> errors::ExpectedSuccess {
 
     let mut games = games.lock().unwrap();
     for (_game_id, game) in games.iter_mut(){
