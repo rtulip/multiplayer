@@ -94,18 +94,20 @@ impl Server {
 
         });
 
+        // Run game systems
         let games_clone = Arc::clone(&self.games);
         self.pool.dispatcher.execute_loop(move ||{
             dispatch_sys(&games_clone)
         });
 
         loop {
-
+            // Wait for connections
             if let Ok((stream, _addr)) = self.listener.accept(){
                 
                 let dispatch = self.pool.dispatcher.clone();
                 let clients = Arc::clone(&self.clients);
                 let games = Arc::clone(&self.games);
+                // Get client info
                 self.pool.dispatcher.execute(move || {
                     connect_client(
                         stream.try_clone().expect("Failed to clone stream"), 
@@ -126,22 +128,30 @@ impl Server {
 fn connect_client(mut socket: TcpStream, dispatch: &dispatcher::Dispatcher, clients: &ClientHashmap, games: &GameHashMap) {
 
     let handler = DefaultHandler{};
-
+    
+    // Send request for Client ID.
     let msg = message::RequestClientID;
     message::send_json(msg, &mut socket);
+
+    // Wait for Reply
     let mut buff = vec![0; message::MSG_SIZE];
     match socket.read(&mut buff){
+        // Socket disconnected
         Ok(0) => (),
+        // Received Message
         Ok(_) => {
             
+            // Check if message is a valid RequestClientIDResponse
             if handler.is_type(&buff.clone(), message::REQUEST_CLIENT_ID_RESPONSE_IDENTIFIER) {
                 
+                // Parse the response
                 let v = handler.parse_json(&buff);
                 let data = v.get("data").unwrap();
                 let data_string = serde_json::to_string(data).expect("Failed to convert data");
 
                 let resp: message::RequestClientIDResponse = serde_json::from_str(data_string.as_str()).expect("Improper Resonse Format");
-
+                
+                // Create the client object
                 let new_client = client::Client {
                     id: resp.id,
                     message_handler: client::ClientHandler{
@@ -151,17 +161,17 @@ fn connect_client(mut socket: TcpStream, dispatch: &dispatcher::Dispatcher, clie
                     state: client::ClientState::Waiting,
                 };
 
-                // Dispatch add_client().
                 let client_clone = new_client.try_clone().expect("Failed to clone Client");
-                let map_clone = Arc::clone(clients);
-                let games_clone = Arc::clone(games);
+                let clients_clone = Arc::clone(clients);
+                // Add clients to the ClientsHashmap as playing no game. 
                 dispatch.execute(move || {
-                    add_client(client_clone, map_clone, games_clone);
+                    add_client(client_clone, clients_clone);
                 });
 
                 let clients_clone = Arc::clone(clients);
                 let games_clone = Arc::clone(games);
                 let dispatch_clone = dispatch.clone();
+                // Listen to the client.
                 dispatch.execute_loop(move || {
                     client_listen(
                         new_client.try_clone().expect("Failed to clone new Client"),
@@ -262,10 +272,10 @@ fn client_listen(
 ///
 /// * 'addr' - The SocketAddr which will serve as a key to the hashmap.
 /// * 'socket' - The TcpStream of the client which will serve as the value to the hashmap.
-/// * 'map_mutex' - A ClientHashMap where the client will be inserted.
-fn add_client(client: client::Client, map_mutex: ClientHashmap, games: GameHashMap){
+/// * 'clients' - A ClientHashMap where the client will be inserted.
+fn add_client(client: client::Client, clients: ClientHashmap){
 
-    let mut clients = map_mutex.lock().unwrap();
+    let mut clients = clients.lock().unwrap();
     let id = client.id.clone();
     if let Some(_) = clients.insert(id.clone(), client){
         println!("Client {} already in map", id);
