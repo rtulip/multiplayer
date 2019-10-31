@@ -1,5 +1,5 @@
 #![allow(unused_variables)]
-pub mod client;
+pub mod host;
 pub mod server;
 pub mod threading;
 pub mod errors;

@@ -13,8 +13,8 @@ The server must be running to connect to the clients
 ./server.sh
 ```
 
-## Running the client
+## Running the host client
 
 ```console
-./clinet.sh
+./host.sh
 ```
