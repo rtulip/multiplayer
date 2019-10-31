@@ -87,11 +87,11 @@ impl Server {
         std::mem::drop(games);
 
         // Publish data continually to each client. 
-        let map_mutex = Arc::clone(&self.clients);
+        let games = Arc::clone(&self.games);
         let dispatch = self.pool.dispatcher.clone();
         self.pool.dispatcher.execute_loop(move || {
 
-            publish_data(&map_mutex, &dispatch)
+            publish_data(&games, &dispatch)
 
         });
 
@@ -121,11 +121,13 @@ impl Server {
                 // Dispatch client_listen() on loop.
                 let dispatch_clone = self.pool.dispatcher.clone();
                 let map_clone = Arc::clone(&self.clients);
+                let game_clone = Arc::clone(&self.games);
                 self.pool.dispatcher.execute_loop(move || {
                     client_listen(
                         client_id,
                         stream.try_clone().expect("Uable to clone stream"), 
                         &map_clone,
+                        &game_clone,
                         &dispatch_clone
                     )
                 });
@@ -150,7 +152,13 @@ impl Server {
 /// # Returns
 /// 
 /// * ConnectionStatus
-fn client_listen(client_id: ClientID,mut socket: TcpStream, map_mutex: &ClientHashmap, dispatch: &dispatcher::Dispatcher) -> errors::ConnectionStatus {
+fn client_listen(
+    client_id: ClientID, 
+    mut socket: TcpStream, 
+    map_mutex: &ClientHashmap, 
+    game_mutex: &GameHashMap, 
+    dispatch: &dispatcher::Dispatcher
+    ) -> errors::ConnectionStatus {
     
     let mut buff = vec![0; message::MSG_SIZE];
 
@@ -161,8 +169,9 @@ fn client_listen(client_id: ClientID,mut socket: TcpStream, map_mutex: &ClientHa
             
             // Dispatch remove_client() to remove this client from the hashmap.
             let map_clone = Arc::clone(map_mutex);
+            let game_clone = Arc::clone(game_mutex);
             dispatch.execute(move || {
-                remove_client(&client_id, &map_clone);
+                remove_client(&client_id, &map_clone, &game_clone);
             });
             Err(errors::ClientDisconnectError{
                 client_id,
@@ -190,8 +199,9 @@ fn client_listen(client_id: ClientID,mut socket: TcpStream, map_mutex: &ClientHa
             
             // Dispatch remove client to remove this client from the hashmap.
             let map_clone = Arc::clone(map_mutex);
+            let game_clone = Arc::clone(game_mutex);
             dispatch.execute(move || {
-                remove_client(&client_id, &map_clone);
+                remove_client(&client_id, &map_clone, &game_clone);
             });
             Err(errors::ClientDisconnectError{
                 client_id,
@@ -237,11 +247,23 @@ fn add_client(client_id: ClientID, socket: TcpStream, map_mutex: ClientHashmap, 
 ///
 /// * 'addr' - The key of the client.
 /// * 'map_mutex' - A ClientHashMap from which the client will be removed.
-fn remove_client(client_id: &ClientID, map_mutex: &ClientHashmap) {
+fn remove_client(client_id: &ClientID, map_mutex: &ClientHashmap, game_mutex: &GameHashMap) {
 
     let mut clients = map_mutex.lock().unwrap();
-    if let Some(_) = clients.remove(client_id){
-        println!("Client {} successfully removed from map", client_id);
+    if let Some(game_id) = clients.remove(client_id){
+        println!("Client {} successfully removed from ClientMap", client_id);
+        match game_id {
+            Some(id) => {
+                let mut games = game_mutex.lock().unwrap();
+                if let Some(game) = games.get_mut(&id) {
+                    let mut players = game.model.players.lock().unwrap();
+                    if let Some(_) = players.remove(client_id){
+                        println!("Client {} succefully removed from PlayerList", client_id);
+                    }
+                }
+            },
+            None => (),
+        }
     } else {
         println!("Faile to remove client  {} from map!", client_id);
     }
@@ -256,20 +278,32 @@ fn remove_client(client_id: &ClientID, map_mutex: &ClientHashmap) {
 /// 
 /// # Returns
 /// * ExpectedSuccess - This function shouldn't break out of a loop unless something very strange happens.
-fn publish_data(map_mutex: &ClientHashmap, dispatch: &dispatcher::Dispatcher) -> errors::ExpectedSuccess {
+fn publish_data(games: &GameHashMap, dispatch: &dispatcher::Dispatcher) -> errors::ExpectedSuccess {
 
-    // let mut clients = map_mutex.lock().unwrap();
-    // for (addr, socket) in clients.iter_mut(){
+    let mut games = games.lock().unwrap();
+    for (_game_id, game) in games.iter_mut(){
 
-    //     let mut socket_clone = socket.try_clone().expect("Failed to clone socket");
-    //     dispatch.execute(move || {
-    //         message::send_text_message(&mut socket_clone, "Game Data");
-    //     })
+        let mut players = game.model.players.lock().unwrap();
+        for (player_id, socket) in players.iter_mut() {
+            match socket {
+                Some(socket) => {
+                    let mut socket_clone = socket.try_clone().expect("Failed to clone socket");
+                    dispatch.execute(move || {
+                        message::send_text_message(&mut socket_clone, "Game Data");
+                    })
+                }
+                None => {
+                    println!("Player {} is currently disconnected", player_id);
+                }
+            }
+        }
+        std::mem::drop(players);
 
-    // }
+    }
 
-    // std::mem::drop(clients);
-    // thread::sleep(Duration::from_secs(2));
+    std::mem::drop(games);
+
+    thread::sleep(Duration::from_secs(1));
 
     Ok(())
 
