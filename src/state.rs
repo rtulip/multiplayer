@@ -1,4 +1,4 @@
-pub trait State {
+pub trait State{
 
     type StateEnum;
 

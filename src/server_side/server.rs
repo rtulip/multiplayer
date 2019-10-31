@@ -13,7 +13,6 @@ use crate::server_side::client;
 /// All client connections are held in a hashmap. The key to this Hashmap is the socket address, and the value is the TcpStream.Arc
 /// Since multiple threads are going to be trying to add, remove, and maniuplate the values in hashmap, it must be protected behind
 /// a mutex.
-
 type GameID = u32;
 type ClientHashmap = Arc<Mutex<HashMap<client::ClientID, client::Client>>>;
 type GameHashMap = Arc<Mutex<HashMap<GameID, controller::GameController>>>;

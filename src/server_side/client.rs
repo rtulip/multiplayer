@@ -12,6 +12,7 @@ use crate::message;
 pub type ClientID = u32;
 pub type ClientCollection = Arc<Mutex<HashSet<ClientID>>>;
 
+#[derive(Clone, Copy)]
 pub enum ClientState{
     PendingID,
     Waiting,
@@ -43,6 +44,61 @@ impl Client {
             let buff = json_string.into_bytes();
             socket_clone.write_all(&buff).expect("Failed to write to socket!");
         }
+    }
+
+    pub fn try_clone(&self) -> std::io::Result<Client> {
+
+        let id = self.id;
+        let state = self.state.clone();
+        match (&self.socket, self.game_id) {
+            (Some(socket), Some(game_id)) => {
+                let socket = socket.try_clone()?;
+                
+                Ok(Client {
+                    id,
+                    socket: Some(socket),
+                    game_id: Some(game_id),
+                    state,
+
+                })
+
+            },
+            (Some(socket), None) => {
+
+                let socket = socket.try_clone()?;
+                
+                Ok(Client {
+                    id,
+                    socket: Some(socket),
+                    game_id: None,
+                    state,
+
+                })
+
+            },
+            (None, Some(gid)) => {
+
+                Ok(Client {
+                    id,
+                    socket: None,
+                    game_id: Some(gid),
+                    state,
+                })
+
+            },
+            (None, None) => {
+
+                Ok(Client {
+                    id,
+                    socket: None,
+                    game_id: None,
+                    state,
+
+                })
+
+            }
+        }
+
     }
 
 }
