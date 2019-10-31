@@ -1,4 +1,4 @@
-use std::net::{TcpListener, TcpStream, SocketAddr};
+use std::net::{TcpListener, TcpStream};
 use std::io::prelude::*;
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
@@ -6,17 +6,22 @@ use std::time::Duration;
 use std::thread;
 
 use crate::threading::{threadpool, dispatcher};
+use crate::game::controller;
 use crate::{errors,message};
 
 /// All client connections are held in a hashmap. The key to this Hashmap is the socket address, and the value is the TcpStream.Arc
 /// Since multiple threads are going to be trying to add, remove, and maniuplate the values in hashmap, it must be protected behind
 /// a mutex.
-type ClientHashmap = Arc<Mutex<HashMap<SocketAddr, TcpStream>>>;
+pub type ClientID = u32;
+type GameID = u32;
+type ClientHashmap = Arc<Mutex<HashMap<ClientID, Option<GameID>>>>;
+type GameHashMap = Arc<Mutex<HashMap<GameID, controller::GameController>>>;
 
 /// Encapsulation of a server
 pub struct Server {
     /// Servers have a ClientHashmap to asyncronously track client connections.
     clients: ClientHashmap,
+    games: GameHashMap,
     /// Servers have a TcpListener to listen for new client connections.
     listener: TcpListener,
     /// Servers have a ThreadPool which dispatches jobs.
@@ -49,8 +54,12 @@ impl Server {
         let clients = HashMap::new();
         let clients = Arc::new(Mutex::new(clients));
 
+        let games: HashMap<u32, controller::GameController> = HashMap::new();
+        let games = Arc::new(Mutex::new(games));
+
         Server{
             clients,
+            games,
             listener,
             pool,
         }    
@@ -73,35 +82,52 @@ impl Server {
     ///         * 'Send Message' - Sends a message to a connected client.
     pub fn start(self) {
 
+        let mut games = self.games.lock().unwrap();
+        games.insert(0,controller::GameController::new());
+        std::mem::drop(games);
+
         // Publish data continually to each client. 
-        let map_mutex = Arc::clone(&self.clients);
+        let games = Arc::clone(&self.games);
         let dispatch = self.pool.dispatcher.clone();
         self.pool.dispatcher.execute_loop(move || {
 
-            publish_data(&map_mutex, &dispatch)
+            publish_data(&games, &dispatch)
 
+        });
+
+        let games_clone = Arc::clone(&self.games);
+        self.pool.dispatcher.execute_loop(move ||{
+            dispatch_sys(&games_clone)
         });
 
         loop {
 
-            if let Ok((stream, addr)) = self.listener.accept(){
+            if let Ok((stream, _addr)) = self.listener.accept(){
                 
+                let clients = self.clients.lock().unwrap();
+                let client_id: ClientID = clients.len() as ClientID;
+
+                std::mem::drop(clients);            
+
                 // Dispatch add_client().
                 let stream_clone = stream.try_clone().expect("Unable to clone stream");
-                let addr_clone = addr.clone();
+                let id_clone = client_id.clone();
                 let map_clone = Arc::clone(&self.clients);
+                let games_clone = Arc::clone(&self.games);
                 self.pool.dispatcher.execute(move || {
-                    add_client(addr_clone, stream_clone, map_clone);
+                    add_client(id_clone, stream_clone, map_clone, games_clone);
                 });
 
                 // Dispatch client_listen() on loop.
                 let dispatch_clone = self.pool.dispatcher.clone();
                 let map_clone = Arc::clone(&self.clients);
+                let game_clone = Arc::clone(&self.games);
                 self.pool.dispatcher.execute_loop(move || {
                     client_listen(
+                        client_id,
                         stream.try_clone().expect("Uable to clone stream"), 
-                        addr,
                         &map_clone,
+                        &game_clone,
                         &dispatch_clone
                     )
                 });
@@ -126,7 +152,13 @@ impl Server {
 /// # Returns
 /// 
 /// * ConnectionStatus
-fn client_listen(mut socket: TcpStream, addr: SocketAddr, map_mutex: &ClientHashmap, dispatch: &dispatcher::Dispatcher) -> errors::ConnectionStatus {
+fn client_listen(
+    client_id: ClientID, 
+    mut socket: TcpStream, 
+    map_mutex: &ClientHashmap, 
+    game_mutex: &GameHashMap, 
+    dispatch: &dispatcher::Dispatcher
+    ) -> errors::ConnectionStatus {
     
     let mut buff = vec![0; message::MSG_SIZE];
 
@@ -137,11 +169,12 @@ fn client_listen(mut socket: TcpStream, addr: SocketAddr, map_mutex: &ClientHash
             
             // Dispatch remove_client() to remove this client from the hashmap.
             let map_clone = Arc::clone(map_mutex);
+            let game_clone = Arc::clone(game_mutex);
             dispatch.execute(move || {
-                remove_client(&addr, &map_clone);
+                remove_client(&client_id, &map_clone, &game_clone);
             });
             Err(errors::ClientDisconnectError{
-                addr,
+                client_id,
             })
 
         },
@@ -166,11 +199,12 @@ fn client_listen(mut socket: TcpStream, addr: SocketAddr, map_mutex: &ClientHash
             
             // Dispatch remove client to remove this client from the hashmap.
             let map_clone = Arc::clone(map_mutex);
+            let game_clone = Arc::clone(game_mutex);
             dispatch.execute(move || {
-                remove_client(&addr, &map_clone);
+                remove_client(&client_id, &map_clone, &game_clone);
             });
             Err(errors::ClientDisconnectError{
-                addr,
+                client_id,
             })
 
         }
@@ -185,14 +219,24 @@ fn client_listen(mut socket: TcpStream, addr: SocketAddr, map_mutex: &ClientHash
 /// * 'addr' - The SocketAddr which will serve as a key to the hashmap.
 /// * 'socket' - The TcpStream of the client which will serve as the value to the hashmap.
 /// * 'map_mutex' - A ClientHashMap where the client will be inserted.
-fn add_client(addr: SocketAddr, socket: TcpStream, map_mutex: ClientHashmap){
+fn add_client(client_id: ClientID, socket: TcpStream, map_mutex: ClientHashmap, games: GameHashMap){
 
     let mut clients = map_mutex.lock().unwrap();
-    
-    if let Some(_) = clients.insert(addr, socket){
-        println!("Client {} already in map", addr);
+    if let Some(_) = clients.insert(client_id, Some(0 as GameID)){
+        println!("Client {} already in map", client_id);
     } else {
-        println!("Client {} successfully added to map", addr);
+        println!("Client {} successfully added to map", client_id);
+    }
+
+    std::mem::drop(clients);
+
+    let mut games = games.lock().unwrap();
+    let game_id: u32 = 0;
+    if let Some(game) = games.get_mut(&game_id){
+        let players = game.model.players.lock().unwrap();
+        let len = players.len();
+        std::mem::drop(players);
+        game.model.add_player(len as u32, socket.try_clone().expect("Unable to clone socket"));
     }
 
 }
@@ -203,13 +247,25 @@ fn add_client(addr: SocketAddr, socket: TcpStream, map_mutex: ClientHashmap){
 ///
 /// * 'addr' - The key of the client.
 /// * 'map_mutex' - A ClientHashMap from which the client will be removed.
-fn remove_client(addr: &SocketAddr, map_mutex: &ClientHashmap) {
+fn remove_client(client_id: &ClientID, map_mutex: &ClientHashmap, game_mutex: &GameHashMap) {
 
     let mut clients = map_mutex.lock().unwrap();
-    if let Some(_) = clients.remove(addr){
-        println!("Client {} successfully removed from map", addr);
+    if let Some(game_id) = clients.remove(client_id){
+        println!("Client {} successfully removed from ClientMap", client_id);
+        match game_id {
+            Some(id) => {
+                let mut games = game_mutex.lock().unwrap();
+                if let Some(game) = games.get_mut(&id) {
+                    let mut players = game.model.players.lock().unwrap();
+                    if let Some(_) = players.remove(client_id){
+                        println!("Client {} succefully removed from PlayerList", client_id);
+                    }
+                }
+            },
+            None => (),
+        }
     } else {
-        println!("Faile to remove client  {} from map!", addr);
+        println!("Faile to remove client  {} from map!", client_id);
     }
 
 }
@@ -222,20 +278,48 @@ fn remove_client(addr: &SocketAddr, map_mutex: &ClientHashmap) {
 /// 
 /// # Returns
 /// * ExpectedSuccess - This function shouldn't break out of a loop unless something very strange happens.
-fn publish_data(map_mutex: &ClientHashmap, dispatch: &dispatcher::Dispatcher) -> errors::ExpectedSuccess {
+fn publish_data(games: &GameHashMap, dispatch: &dispatcher::Dispatcher) -> errors::ExpectedSuccess {
 
-    let mut clients = map_mutex.lock().unwrap();
-    for (addr, socket) in clients.iter_mut(){
+    let mut games = games.lock().unwrap();
+    for (_game_id, game) in games.iter_mut(){
 
-        let mut socket_clone = socket.try_clone().expect("Failed to clone socket");
-        dispatch.execute(move || {
-            message::send_text_message(&mut socket_clone, "Game Data");
-        })
+        let mut players = game.model.players.lock().unwrap();
+        for (player_id, socket) in players.iter_mut() {
+            match socket {
+                Some(socket) => {
+                    let mut socket_clone = socket.try_clone().expect("Failed to clone socket");
+                    dispatch.execute(move || {
+                        message::send_text_message(&mut socket_clone, "Game Data");
+                    })
+                }
+                None => {
+                    println!("Player {} is currently disconnected", player_id);
+                }
+            }
+        }
+        std::mem::drop(players);
 
     }
 
-    std::mem::drop(clients);
-    thread::sleep(Duration::from_secs(2));
+    std::mem::drop(games);
+
+    thread::sleep(Duration::from_secs(1));
+
+    Ok(())
+
+}
+
+fn dispatch_sys(games: &GameHashMap) -> errors::ExpectedSuccess {
+
+    let mut games = games.lock().unwrap();
+    for (_game_id, game) in games.iter_mut(){
+
+        game.dispatch();
+
+    }
+
+    std::mem::drop(games);
+    thread::sleep(Duration::from_secs(1));
 
     Ok(())
 

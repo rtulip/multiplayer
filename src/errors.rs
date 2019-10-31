@@ -1,10 +1,10 @@
 use std::error;
 use std::fmt;
-use std::net::SocketAddr;
+use crate::server::ClientID;
 
 #[derive(Debug, Clone)]
 pub struct ClientDisconnectError{
-    pub addr: SocketAddr,
+    pub client_id: ClientID,
 }
 
 #[derive(Debug, Clone)]
@@ -15,7 +15,7 @@ pub struct UnexpectedError;
 
 impl fmt::Display for ClientDisconnectError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Client {} Disconnected", self.addr)
+        write!(f, "Client {} Disconnected", self.client_id)
     }
 }
 
