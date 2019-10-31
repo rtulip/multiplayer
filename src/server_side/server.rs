@@ -81,11 +81,7 @@ impl Server {
     ///         * 'Remove Client' Removes a client from the ClientHashMap.
     ///         * 'Send Message' - Sends a message to a connected client.
     pub fn start(self) {
-
-        let mut games = self.games.lock().unwrap();
-        games.insert(0,controller::GameController::new());
-        std::mem::drop(games);
-
+        
         // Publish data continually to each client. 
         let games = Arc::clone(&self.games);
         let clients = Arc::clone(&self.clients);
