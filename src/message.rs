@@ -5,9 +5,12 @@ use std::io::prelude::*;
 use serde_json::json;
 
 use crate::threading::dispatcher;
+use crate::server_side::client::ClientID;
 
 pub const MSG_SIZE: usize = 4096;
 pub const TEXT_MESSAGE_IDENTIFIER: &str = "Text";
+pub const REQUEST_CLIENT_ID_IDENTIFIER: &str = "RequestClientID";
+pub const REQUEST_CLIENT_ID_RESPONSE_IDENTIFIER: &str = "RequestClientIDResponse";
 
 trait Message<'a>: Serialize + Deserialize<'a> {
     const MSG_TYPE: &'a str;
@@ -29,15 +32,32 @@ trait Message<'a>: Serialize + Deserialize<'a> {
             Ok(msg) => Ok(msg),
             Err(e) => Err(e),
         }
-    
+
     }
 
 }
 
 #[derive(Deserialize, Serialize)]
 pub struct TextMessage {
-    msg_type: String,
     text: String,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct RequestClientID;
+
+#[derive(Deserialize, Serialize)]
+pub struct RequestClientIDResponse {
+    id: ClientID
+}
+
+impl Message<'static> for TextMessage{
+    const MSG_TYPE: &'static str = TEXT_MESSAGE_IDENTIFIER;
+}
+impl Message<'static> for RequestClientID{
+    const MSG_TYPE: &'static str = REQUEST_CLIENT_ID_IDENTIFIER;
+}
+impl Message<'static> for RequestClientIDResponse{
+    const MSG_TYPE: &'static str = REQUEST_CLIENT_ID_RESPONSE_IDENTIFIER;
 }
 
 impl TextMessage{
@@ -45,7 +65,6 @@ impl TextMessage{
     pub fn new<S: Into<String>>(text: S) -> TextMessage{
 
         TextMessage{
-            msg_type: TEXT_MESSAGE_IDENTIFIER.to_owned(),
             text: text.into(),
         }
 
@@ -54,15 +73,6 @@ impl TextMessage{
     pub fn handle(&self) {
         println!("Received Text Message: {}", self.text);
     }
-
-}
-
-pub struct RequestClientID {
-    msg_type: String,
-}
-
-pub struct RequestClientIDResponse{
-    msg_type: String,
 
 }
 
