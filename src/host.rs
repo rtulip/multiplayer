@@ -36,7 +36,8 @@ impl Host {
                 Ok(msg) => {
                     let mut s_clone = stream_clone.try_clone().expect("Unable to clone stream");
                     dispatch_clone.execute(move || {
-                        message::send_text_message(&mut s_clone, msg)
+                        let msg = message::TextMessage::new(msg);
+                        message::send_json(msg, &mut s_clone);
                     });
                     Ok(())
                 },

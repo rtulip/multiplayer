@@ -189,7 +189,8 @@ fn client_listen(
 
                 // Dispatch send_message() to echo the message to the client.
                 dispatch.execute(move || {
-                    message::send_text_message(&mut socket, msg);
+                    let msg = message::TextMessage::new(msg);
+                    message::send_json(msg, &mut socket);
                 });
 
                 // Say everything is Ok
@@ -303,7 +304,8 @@ fn publish_data(games: &GameHashMap, clients: &ClientHashmap, dispatch: &dispatc
                 let clone = client.try_clone().expect("Failed to clone Client");
                 if let Some(mut socket) = clone.socket{
 
-                    message::send_text_message(&mut socket, "Game Data");
+                    let msg = message::TextMessage::new("Game Data");
+                    message::send_json(msg, &mut socket);
 
                 }
                 

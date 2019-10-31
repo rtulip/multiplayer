@@ -12,7 +12,7 @@ pub const TEXT_MESSAGE_IDENTIFIER: &str = "Text";
 pub const REQUEST_CLIENT_ID_IDENTIFIER: &str = "RequestClientID";
 pub const REQUEST_CLIENT_ID_RESPONSE_IDENTIFIER: &str = "RequestClientIDResponse";
 
-trait Message<'a>: Serialize + Deserialize<'a> {
+pub trait Message<'a>: Serialize + Deserialize<'a> {
     const MSG_TYPE: &'a str;
 
     fn to_json_string(&self) -> String {
@@ -61,31 +61,16 @@ impl Message<'static> for RequestClientIDResponse{
 }
 
 impl TextMessage{
-
     pub fn new<S: Into<String>>(text: S) -> TextMessage{
-
         TextMessage{
             text: text.into(),
         }
-
     }
-    
-    pub fn handle(&self) {
-        println!("Received Text Message: {}", self.text);
-    }
-
 }
 
-pub fn send_text_message<S: Into<String>>(socket: &mut TcpStream, message: S){
+pub fn send_json<M: Message<'static>>(msg: M, socket: &mut TcpStream) {
 
-    let text_msg = TextMessage::new(message);
-    send_json(text_msg, socket);
-    
-}
-
-pub fn send_json<M: Serialize>(val: M, socket: &mut TcpStream) {
-
-    let json_string = serde_json::to_string(&val).expect("Unable to convert message to json");
+    let json_string = msg.to_json_string();
     let buff = json_string.into_bytes();
     socket.write_all(&buff).expect("Failed to write to socket!");
 
@@ -97,19 +82,30 @@ pub fn receive_json(buff: &Vec<u8>, dispatch: dispatcher::Dispatcher) {
     let string = String::from_utf8(msg).expect("Invlaid utf8 message");
 
     let v: Value = serde_json::from_str(string.as_str()).expect("Unable to convert to json");
-    println!("Json: {}", v);
-    match &v["msg_type"] {
+    let identifier = v.get("msg_type").unwrap();
+    let data = v.get("data").unwrap();
+    let data_string = serde_json::to_string(data).expect("Failed to convert data");
+
+    println!("Received Json: {}", v);
+    match identifier {
         Value::String(text) => {
             match text.as_ref() {
-                "Text" => {
-                    let text_msg: TextMessage = serde_json::from_value(v).expect("Invalid Text Message");
-                    dispatch.execute(move ||{
-                        text_msg.handle();
-                    });
+                TEXT_MESSAGE_IDENTIFIER => {
+                    // handle text message
+                    let text_msg: TextMessage = serde_json::from_str(data_string.as_str()).expect("Failed to parse TextMessage");
+                    println!("Received Text Message: {}", text_msg.text);
                 },
-                _ => println!("Unknown Message type!"),
+                REQUEST_CLIENT_ID_IDENTIFIER => {
+                    // handle client id request
+                },
+                REQUEST_CLIENT_ID_RESPONSE_IDENTIFIER => {
+                    // handle client id request response
+                },
+                _ => println!("Unknown Message Identifier"),
             }
-        },  
-        _ => println!("Unrecognized Message!"),
+        },
+        _ => println!("No Identifier Provided"),
     }
+
+
 }
