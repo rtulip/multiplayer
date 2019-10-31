@@ -225,8 +225,9 @@ fn add_client(client_id: client::ClientID, socket: TcpStream, map_mutex: ClientH
     let mut clients = map_mutex.lock().unwrap();
     if let Some(_) = clients.insert(client_id, client::Client{
         id: client_id,
-        socket: socket.try_clone().expect("Failed to clone socket"),
+        socket: Some(socket.try_clone().expect("Failed to clone socket")),
         game_id: Some(0 as GameID),
+        state: client::ClientState::InGame,
     }){
         println!("Client {} already in map", client_id);
     } else {
