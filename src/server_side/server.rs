@@ -7,7 +7,8 @@ use std::thread;
 
 use crate::threading::{threadpool, dispatcher};
 use crate::game::controller;
-use crate::{errors,message};
+use crate::errors;
+use crate::comms::message;
 use crate::server_side::client;
 
 /// All client connections are held in a hashmap. The key to this Hashmap is the socket address, and the value is the TcpStream.Arc
@@ -81,7 +82,7 @@ impl Server {
     ///         * 'Remove Client' Removes a client from the ClientHashMap.
     ///         * 'Send Message' - Sends a message to a connected client.
     pub fn start(self) {
-        
+
         // Publish data continually to each client. 
         let games = Arc::clone(&self.games);
         let clients = Arc::clone(&self.clients);

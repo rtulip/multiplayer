@@ -2,7 +2,7 @@ use std::io::prelude::*;
 use std::net::TcpStream;
 
 use crate::threading::threadpool;
-use crate::message;
+use crate::comms::message;
 use crate::errors::InputHandleError;
 
 pub struct Host {
