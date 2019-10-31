@@ -1,8 +1,13 @@
 use specs::{Builder, World, WorldExt};
 use std::net::TcpStream;
+use std::sync::{Arc, Mutex};
+use std::collections::HashMap;
+
+use crate::threading::ConnectionCollection;
 
 pub struct GameModel{
     pub world: World,
+    pub players: ConnectionCollection,
 }
 
 impl GameModel {
@@ -17,21 +22,30 @@ impl GameModel {
 
         world.maintain();
 
+        let players: HashMap<u32, Option<TcpStream>> = HashMap::new();
+        let players = Arc::new(Mutex::new(players));
+
         GameModel {
             world,   
+            players,
         }
 
     }
 
-    pub fn add_player(&mut self, socket: TcpStream) {
+    pub fn add_player(&mut self, player_id: u32,socket: TcpStream) {
 
         self.world.create_entity()
             .with(components::Position{x: 0.0, y: 0.0})
             .with(components::Velocity{x: 1.0, y: 1.0})
-            .with(components::Player{socket: Some(socket)})
+            .with(components::Player)
             .with(components::Drag)
             .build();
 
+        let mut players = self.players.lock().unwrap();
+        match players.insert(player_id, Some(socket)){
+            None => println!("Player added successfully"),
+            _ => println!("Updated Player info"),
+        }
     }
 
 }
@@ -39,7 +53,6 @@ impl GameModel {
 pub mod components {
 
     use specs::{Component, VecStorage, NullStorage};
-    use std::net::TcpStream;
 
     #[derive(Component, Debug)]
     #[storage(VecStorage)]
@@ -55,11 +68,9 @@ pub mod components {
         pub y: f32,
     }
 
-    #[derive(Component, Debug)]
-    #[storage(VecStorage)]
-    pub struct Player {
-        pub socket: Option<TcpStream>,
-    }
+    #[derive(Component, Debug, Default)]
+    #[storage(NullStorage)]
+    pub struct Player;
 
     #[derive(Component, Default)]
     #[storage(NullStorage)]

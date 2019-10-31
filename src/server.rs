@@ -215,7 +215,10 @@ fn add_client(addr: SocketAddr, socket: TcpStream, map_mutex: ClientHashmap, gam
     std::mem::drop(clients);
 
     let mut games = games.lock().unwrap();
-    games[0].model.add_player(socket.try_clone().expect("Unable to clone socket"));
+    let players = games[0].model.players.lock().unwrap();
+    let len = players.len();
+    std::mem::drop(players);
+    games[0].model.add_player(len as u32, socket.try_clone().expect("Unable to clone socket"));
 
 
 }
