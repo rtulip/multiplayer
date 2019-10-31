@@ -84,7 +84,7 @@ impl Client {
 
 impl State for Client {
     type StateEnum = ClientState;
-    fn get_state(&mut self) -> &mut ClientState {
-        &mut self.state
+    fn change_state(&mut self, new_state: ClientState){
+        self.state = new_state;
     }
 }

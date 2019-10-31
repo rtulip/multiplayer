@@ -3,6 +3,13 @@ use std::sync::{Arc, Mutex};
 use std::collections::HashSet;
 
 use crate::server_side::client::ClientCollection;
+use crate::state::State;
+
+pub enum GameState {
+    PendingPlayers(u32),
+    Active,
+    Paused,
+}
 
 pub struct GameModel{
     pub world: World,
@@ -18,6 +25,8 @@ impl GameModel {
         world.register::<components::Velocity>();
         world.register::<components::Player>();
         world.register::<components::Drag>();
+
+        world.insert(GameState::Active);
 
         world.maintain();
 
@@ -48,6 +57,16 @@ impl GameModel {
         }
     }
 
+}
+
+impl State for GameModel {
+    type StateEnum = GameState;
+    fn change_state(&mut self, new_state: GameState) {
+
+        let mut state = self.world.write_resource::<GameState>();
+        *state = new_state;
+
+    }
 }
 
 pub mod components {
