@@ -41,7 +41,7 @@ impl Server {
     /// # Example: 
     /// ```
     /// extern crate multiplayer;
-    /// use multiplayer::server;
+    /// use multiplayer::server_side::server;
     /// 
     /// let server = server::Server::new("127.0.0.1:7878", 100);
     /// // server.start();
