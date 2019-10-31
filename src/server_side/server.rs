@@ -300,8 +300,13 @@ fn publish_data(games: &GameHashMap, clients: &ClientHashmap, dispatch: &dispatc
 
             if let Some(client) = clients.get_mut(player_id){
                 
-                client.send_text_message("Game Data");
+                let clone = client.try_clone().expect("Failed to clone Client");
+                if let Some(mut socket) = clone.socket{
 
+                    message::send_text_message(&mut socket, "Game Data");
+
+                }
+                
             }
             std::mem::drop(clients);
 
