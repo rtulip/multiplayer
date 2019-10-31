@@ -10,14 +10,22 @@ use crate::comms::message;
 pub type ClientID = String;
 pub type ClientCollection = Arc<Mutex<HashSet<ClientID>>>;
 
+/// Describes the state of the Client
+/// * Waiting - In lobby, not playing any game
+/// * PendingGame - In lobby, waiting for other players
+/// * InGame - Actively playing the game
 #[derive(Clone, Copy)]
 pub enum ClientState{
-    PendingID,
     Waiting,
     PendingGame,
     InGame,
 }
 
+/// Describes a server-side client
+/// * id - Unique identifier
+/// * message_handler - A ClientHandler to distribue and parse incoming and out going messages.
+/// * game_id - The GameID of the game the client is currently playing. None if state is Waiting.
+/// * state - The state of the client
 pub struct Client {
     pub id: ClientID,
     pub message_handler: ClientHandler,
@@ -26,7 +34,7 @@ pub struct Client {
 }
 
 impl Client {
-
+    // Function to attempt to clone a Client.
     pub fn try_clone(&self) -> std::io::Result<Client> {
 
         let id = self.id.clone();
