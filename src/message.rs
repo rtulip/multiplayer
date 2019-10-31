@@ -34,7 +34,7 @@ pub fn send_text_message<S: Into<String>>(socket: &mut TcpStream, message: S){
 
     let text_msg = TextMessage::new(message);
     send_json(text_msg, socket);
-
+    
 }
 
 pub fn send_json<M: Serialize>(val: M, socket: &mut TcpStream) {
