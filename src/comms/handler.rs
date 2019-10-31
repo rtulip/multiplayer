@@ -1,14 +1,13 @@
-use crate::threading::dispatcher;
 use crate::comms::message;
 use serde_json::Value;
 
 pub trait Handler {
 
-    fn handle_text_msg(&self, msg: message::TextMessage);
-    fn handle_request_client_id(&self, msg: message::RequestClientID);
-    fn handle_request_client_id_response(&self, msg: message::RequestClientIDResponse);
+    fn handle_text_msg(&mut self, msg: message::TextMessage);
+    fn handle_request_client_id(&mut self, msg: message::RequestClientID);
+    fn handle_request_client_id_response(&mut self, msg: message::RequestClientIDResponse);
 
-    fn receive_json(&self, buff: &Vec<u8>, dispatch: dispatcher::Dispatcher) {
+    fn receive_json(&mut self, buff: &Vec<u8>) {
         
         let msg = buff.clone().into_iter().take_while(|&x| x!= 0).collect::<Vec<_>>();
         let string = String::from_utf8(msg).expect("Invlaid utf8 message");

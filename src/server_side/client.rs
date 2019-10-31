@@ -4,8 +4,10 @@ use std::collections::HashSet;
 
 use crate::game::GameID;
 use crate::state::State;
+use crate::comms::handler::Handler;
+use crate::comms::message;
 
-pub type ClientID = u32;
+pub type ClientID = String;
 pub type ClientCollection = Arc<Mutex<HashSet<ClientID>>>;
 
 #[derive(Clone, Copy)]
@@ -27,7 +29,7 @@ impl Client {
 
     pub fn try_clone(&self) -> std::io::Result<Client> {
 
-        let id = self.id;
+        let id = self.id.clone();
         let state = self.state.clone();
         match (&self.socket, self.game_id) {
             (Some(socket), Some(game_id)) => {
@@ -87,4 +89,24 @@ impl State for Client {
     fn change_state(&mut self, new_state: ClientState){
         self.state = new_state;
     }
+}
+
+pub struct ClientHandler {
+
+}
+
+impl Handler for ClientHandler {
+
+    fn handle_text_msg(&mut self, msg: message::TextMessage){
+
+    }
+
+    fn handle_request_client_id(&mut self, msg: message::RequestClientID){
+
+    }
+
+    fn handle_request_client_id_response(&mut self, msg: message::RequestClientIDResponse){
+
+    }
+
 }

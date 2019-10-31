@@ -102,13 +102,13 @@ impl Server {
 
             if let Ok((stream, _addr)) = self.listener.accept(){
                 
-                let clients = self.clients.lock().unwrap();
-                let client_id: client::ClientID = clients.len() as client::ClientID;
+                // let clients = self.clients.lock().unwrap();
+                // let client_id: client::ClientID = std::string::ToString::(clients.len());
 
-                std::mem::drop(clients);            
+                // std::mem::drop(clients);            
 
                 let new_client = client::Client {
-                    id: client_id,
+                    id: "client_id".to_owned(),
                     socket: Some(stream.try_clone().expect("Unabled to clone stream")),
                     game_id: None,
                     state: client::ClientState::PendingGame,
@@ -169,7 +169,7 @@ fn client_listen(
         match socket.read(&mut buff) {
             Ok(0) => {
                 // Dispatch remove_client() to remove this client from the hashmap.
-                let id = client.id;
+                let id = client.id.clone();
                 let map_clone = Arc::clone(map_mutex);
                 let game_clone = Arc::clone(game_mutex);
                 dispatch.execute(move || {
@@ -197,14 +197,14 @@ fn client_listen(
             Err(_) => {
                 
                 // Dispatch remove client to remove this client from the hashmap.
-                let id = client.id;
+                let id = client.id.clone();
                 let map_clone = Arc::clone(map_mutex);
                 let game_clone = Arc::clone(game_mutex);
                 dispatch.execute(move || {
                     remove_client(&id, &map_clone, &game_clone);
                 });
                 Err(errors::ClientDisconnectError{
-                    client_id: client.id,
+                    client_id: client.id.clone(),
                 })
 
             }
@@ -227,8 +227,8 @@ fn client_listen(
 fn add_client(client: client::Client, map_mutex: ClientHashmap, games: GameHashMap){
 
     let mut clients = map_mutex.lock().unwrap();
-    let id = client.id;
-    if let Some(_) = clients.insert(client.id, client){
+    let id = client.id.clone();
+    if let Some(_) = clients.insert(id.clone(), client){
         println!("Client {} already in map", id);
     } else {
         println!("Client {} successfully added to map", id);

@@ -2,7 +2,7 @@ use specs::{Builder, World, WorldExt};
 use std::sync::{Arc, Mutex};
 use std::collections::HashSet;
 
-use crate::server_side::client::ClientCollection;
+use crate::server_side::client::{ClientCollection, ClientID};
 use crate::state::State;
 
 pub enum GameState {
@@ -30,7 +30,7 @@ impl GameModel {
 
         world.maintain();
 
-        let players: HashSet<u32> = HashSet::new();
+        let players: HashSet<ClientID> = HashSet::new();
         let players = Arc::new(Mutex::new(players));
 
         GameModel {
@@ -40,7 +40,7 @@ impl GameModel {
 
     }
 
-    pub fn add_player(&mut self, player_id: u32) {
+    pub fn add_player(&mut self, player_id: ClientID) {
 
         self.world.create_entity()
             .with(components::Position{x: 0.0, y: 0.0})
