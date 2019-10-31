@@ -8,13 +8,14 @@ use std::thread;
 use crate::threading::{threadpool, dispatcher};
 use crate::game::controller;
 use crate::{errors,message};
+use crate::server_side::client;
 
 /// All client connections are held in a hashmap. The key to this Hashmap is the socket address, and the value is the TcpStream.Arc
 /// Since multiple threads are going to be trying to add, remove, and maniuplate the values in hashmap, it must be protected behind
 /// a mutex.
-pub type ClientID = u32;
+
 type GameID = u32;
-type ClientHashmap = Arc<Mutex<HashMap<ClientID, Option<GameID>>>>;
+type ClientHashmap = Arc<Mutex<HashMap<client::ClientID, client::Client>>>;
 type GameHashMap = Arc<Mutex<HashMap<GameID, controller::GameController>>>;
 
 /// Encapsulation of a server
@@ -105,7 +106,7 @@ impl Server {
             if let Ok((stream, _addr)) = self.listener.accept(){
                 
                 let clients = self.clients.lock().unwrap();
-                let client_id: ClientID = clients.len() as ClientID;
+                let client_id: client::ClientID = clients.len() as client::ClientID;
 
                 std::mem::drop(clients);            
 
@@ -153,7 +154,7 @@ impl Server {
 /// 
 /// * ConnectionStatus
 fn client_listen(
-    client_id: ClientID, 
+    client_id: client::ClientID, 
     mut socket: TcpStream, 
     map_mutex: &ClientHashmap, 
     game_mutex: &GameHashMap, 
@@ -219,10 +220,14 @@ fn client_listen(
 /// * 'addr' - The SocketAddr which will serve as a key to the hashmap.
 /// * 'socket' - The TcpStream of the client which will serve as the value to the hashmap.
 /// * 'map_mutex' - A ClientHashMap where the client will be inserted.
-fn add_client(client_id: ClientID, socket: TcpStream, map_mutex: ClientHashmap, games: GameHashMap){
+fn add_client(client_id: client::ClientID, socket: TcpStream, map_mutex: ClientHashmap, games: GameHashMap){
 
     let mut clients = map_mutex.lock().unwrap();
-    if let Some(_) = clients.insert(client_id, Some(0 as GameID)){
+    if let Some(_) = clients.insert(client_id, client::Client{
+        id: client_id,
+        socket: socket.try_clone().expect("Failed to clone socket"),
+        game_id: Some(0 as GameID),
+    }){
         println!("Client {} already in map", client_id);
     } else {
         println!("Client {} successfully added to map", client_id);
@@ -247,12 +252,12 @@ fn add_client(client_id: ClientID, socket: TcpStream, map_mutex: ClientHashmap, 
 ///
 /// * 'addr' - The key of the client.
 /// * 'map_mutex' - A ClientHashMap from which the client will be removed.
-fn remove_client(client_id: &ClientID, map_mutex: &ClientHashmap, game_mutex: &GameHashMap) {
+fn remove_client(client_id: &client::ClientID, map_mutex: &ClientHashmap, game_mutex: &GameHashMap) {
 
     let mut clients = map_mutex.lock().unwrap();
-    if let Some(game_id) = clients.remove(client_id){
+    if let Some(clnt) = clients.remove(client_id){
         println!("Client {} successfully removed from ClientMap", client_id);
-        match game_id {
+        match clnt.game_id {
             Some(id) => {
                 let mut games = game_mutex.lock().unwrap();
                 if let Some(game) = games.get_mut(&id) {
