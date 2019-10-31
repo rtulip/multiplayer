@@ -6,7 +6,7 @@ use crate::server_side::client::ClientCollection;
 use crate::state::State;
 
 pub enum GameState {
-    Pending,
+    PendingPlayers(u32),
     Active,
     Paused,
 }
