@@ -4,8 +4,10 @@ use std::collections::HashSet;
 
 use crate::game::GameID;
 use crate::state::State;
+use crate::comms::handler::Handler;
+use crate::comms::message;
 
-pub type ClientID = u32;
+pub type ClientID = String;
 pub type ClientCollection = Arc<Mutex<HashSet<ClientID>>>;
 
 #[derive(Clone, Copy)]
@@ -18,7 +20,7 @@ pub enum ClientState{
 
 pub struct Client {
     pub id: ClientID,
-    pub socket: Option<TcpStream>,
+    pub message_handler: ClientHandler,
     pub game_id: Option<GameID>,
     pub state: ClientState
 }
@@ -27,57 +29,18 @@ impl Client {
 
     pub fn try_clone(&self) -> std::io::Result<Client> {
 
-        let id = self.id;
+        let id = self.id.clone();
         let state = self.state.clone();
-        match (&self.socket, self.game_id) {
-            (Some(socket), Some(game_id)) => {
-                let socket = socket.try_clone()?;
-                
-                Ok(Client {
-                    id,
-                    socket: Some(socket),
-                    game_id: Some(game_id),
-                    state,
+        let message_handler = self.message_handler.try_clone()?;
+        let game_id = self.game_id.clone();
 
-                })
-
-            },
-            (Some(socket), None) => {
-
-                let socket = socket.try_clone()?;
-                
-                Ok(Client {
-                    id,
-                    socket: Some(socket),
-                    game_id: None,
-                    state,
-
-                })
-
-            },
-            (None, Some(gid)) => {
-
-                Ok(Client {
-                    id,
-                    socket: None,
-                    game_id: Some(gid),
-                    state,
-                })
-
-            },
-            (None, None) => {
-
-                Ok(Client {
-                    id,
-                    socket: None,
-                    game_id: None,
-                    state,
-
-                })
-
-            }
-        }
-
+        Ok(Client{
+            id,
+            state,
+            message_handler,
+            game_id
+        })
+        
     }
 
 }
@@ -87,4 +50,43 @@ impl State for Client {
     fn change_state(&mut self, new_state: ClientState){
         self.state = new_state;
     }
+}
+
+pub struct ClientHandler {
+    pub socket: Option<TcpStream>,
+}
+
+impl ClientHandler{
+    
+    pub fn try_clone(&self) -> std::io::Result<Self>{
+
+        match &self.socket{
+            Some(socket) => {
+                Ok(ClientHandler{
+                    socket: Some(socket.try_clone()?),
+                })
+            }
+            None => {
+                Ok(ClientHandler{
+                    socket: None,
+                })
+            }
+        } 
+    }
+
+}
+impl Handler for ClientHandler {
+
+    fn handle_text_msg(&mut self, msg: message::TextMessage){
+
+    }
+
+    fn handle_request_client_id(&mut self, msg: message::RequestClientID){
+
+    }
+
+    fn handle_request_client_id_response(&mut self, msg: message::RequestClientIDResponse){
+
+    }
+
 }
