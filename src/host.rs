@@ -5,20 +5,20 @@ use crate::threading::threadpool;
 use crate::message;
 use crate::errors::InputHandleError;
 
-pub struct Client {
+pub struct Host {
 
     stream: TcpStream,
     pool: threadpool::ThreadPool,
 }
 
-impl Client {
+impl Host {
 
-    pub fn new(ip: &str, size: usize) -> Client {
+    pub fn new(ip: &str, size: usize) -> Host {
 
         let stream = TcpStream::connect(ip).expect("Unable to connect to server");
         let pool = threadpool::ThreadPool::new(size);
 
-        Client {
+        Host {
             stream,
             pool, 
         }
