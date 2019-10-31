@@ -1,4 +1,4 @@
-use std::net::{TcpListener, TcpStream};
+use std::net::TcpListener;
 use std::io::prelude::*;
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
@@ -118,20 +118,21 @@ impl Server {
                 };
                 
                 // Dispatch add_client().
+                let client_clone = new_client.try_clone().expect("Failed to clone Client");
                 let map_clone = Arc::clone(&self.clients);
                 let games_clone = Arc::clone(&self.games);
                 self.pool.dispatcher.execute(move || {
-                    add_client(new_client.try_clone().expect("Failed to clone Client"), map_clone, games_clone);
+                    add_client(client_clone, map_clone, games_clone);
                 });
 
                 // Dispatch client_listen() on loop.
+                let client_clone = new_client.try_clone().expect("Failed to clone client");
                 let dispatch_clone = self.pool.dispatcher.clone();
                 let map_clone = Arc::clone(&self.clients);
                 let game_clone = Arc::clone(&self.games);
                 self.pool.dispatcher.execute_loop(move || {
                     client_listen(
-                        client_id,
-                        stream.try_clone().expect("Uable to clone stream"), 
+                        new_client.try_clone().expect("Failed to clone new Client"),
                         &map_clone,
                         &game_clone,
                         &dispatch_clone
@@ -159,68 +160,61 @@ impl Server {
 /// 
 /// * ConnectionStatus
 fn client_listen(
-    client_id: client::ClientID, 
-    mut socket: TcpStream, 
+    client: client::Client,
     map_mutex: &ClientHashmap, 
     game_mutex: &GameHashMap, 
     dispatch: &dispatcher::Dispatcher
     ) -> errors::ConnectionStatus {
-    
-    let mut buff = vec![0; message::MSG_SIZE];
 
-    // Read from socket.
-    match socket.read(&mut buff){
-        // Socket Disconnected.
-        Ok(0) => {
-            
-            // Dispatch remove_client() to remove this client from the hashmap.
-            let map_clone = Arc::clone(map_mutex);
-            let game_clone = Arc::clone(game_mutex);
-            dispatch.execute(move || {
-                remove_client(&client_id, &map_clone, &game_clone);
-            });
-            Err(errors::ClientDisconnectError{
-                client_id,
-            })
+    if let Some(mut socket) = client.socket{
+        let mut buff = vec![0; message::MSG_SIZE];
 
-        },
-        // Successfully read to the buffer.
-        Ok(_) => {
-            
-            let msg = buff.clone().into_iter().take_while(|&x| x!= 0).collect::<Vec<_>>();
-            let msg = String::from_utf8(msg).expect("Invalid utf8 message");
-            println!("MSG: {}", msg);
+        match socket.read(&mut buff) {
+            Ok(0) => {
+                // Dispatch remove_client() to remove this client from the hashmap.
+                let id = client.id;
+                let map_clone = Arc::clone(map_mutex);
+                let game_clone = Arc::clone(game_mutex);
+                dispatch.execute(move || {
+                    remove_client(&id, &map_clone, &game_clone);
+                });
+                Err(errors::ClientDisconnectError{
+                    client_id: client.id,
+                })
+            },
+            Ok(_) => {
+                let msg = buff.clone().into_iter().take_while(|&x| x!= 0).collect::<Vec<_>>();
+                let msg = String::from_utf8(msg).expect("Invalid utf8 message");
+                println!("MSG: {}", msg);
 
-            let mut TEMP_CLIENT = client::Client{
-                id: 0,
-                socket: Some(socket.try_clone().expect("Failed to clone socket")),
-                game_id: Some(0),
-                state: client::ClientState::PendingID,
-            };
+                // Dispatch send_message() to echo the message to the client.
+                dispatch.execute(move || {
+                    message::send_text_message(&mut socket, msg);
+                });
 
-            // Dispatch send_message() to echo the message to the client.
-            dispatch.execute(move || {
-                TEMP_CLIENT.send_text_message(msg)
-            });
+                // Say everything is Ok
+                Ok(())
+            },
+            // Failed to read to buffer.
+            Err(_) => {
+                
+                // Dispatch remove client to remove this client from the hashmap.
+                let id = client.id;
+                let map_clone = Arc::clone(map_mutex);
+                let game_clone = Arc::clone(game_mutex);
+                dispatch.execute(move || {
+                    remove_client(&id, &map_clone, &game_clone);
+                });
+                Err(errors::ClientDisconnectError{
+                    client_id: client.id,
+                })
 
-            // Say everything is Ok
-            Ok(())
-
-        },
-        // Failed to read to buffer.
-        Err(_) => {
-            
-            // Dispatch remove client to remove this client from the hashmap.
-            let map_clone = Arc::clone(map_mutex);
-            let game_clone = Arc::clone(game_mutex);
-            dispatch.execute(move || {
-                remove_client(&client_id, &map_clone, &game_clone);
-            });
-            Err(errors::ClientDisconnectError{
-                client_id,
-            })
-
+            }
         }
+    } else {
+        Err(errors::ClientDisconnectError{
+            client_id: client.id
+        })
     }
 
 }
