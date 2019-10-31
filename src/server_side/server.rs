@@ -113,8 +113,8 @@ impl Server {
                 let new_client = client::Client {
                     id: client_id,
                     socket: Some(stream.try_clone().expect("Unabled to clone stream")),
-                    game_id: Some(0 as GameID),
-                    state: client::ClientState::InGame,
+                    game_id: None,
+                    state: client::ClientState::PendingGame,
                 };
                 
                 // Dispatch add_client().
@@ -237,16 +237,16 @@ fn add_client(client: client::Client, map_mutex: ClientHashmap, games: GameHashM
         println!("Client {} successfully added to map", id);
     }
 
-    std::mem::drop(clients);
+    // std::mem::drop(clients);
 
-    let mut games = games.lock().unwrap();
-    let game_id: u32 = 0;
-    if let Some(game) = games.get_mut(&game_id){
-        let players = game.model.players.lock().unwrap();
-        let len = players.len();
-        std::mem::drop(players);
-        game.model.add_player(len as u32);
-    }
+    // let mut games = games.lock().unwrap();
+    // let game_id: u32 = 0;
+    // if let Some(game) = games.get_mut(&game_id){
+    //     let players = game.model.players.lock().unwrap();
+    //     let len = players.len();
+    //     std::mem::drop(players);
+    //     game.model.add_player(len as u32);
+    // }
 
 }
 
