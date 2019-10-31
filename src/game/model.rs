@@ -13,6 +13,7 @@ impl GameModel {
         world.register::<components::Position>();
         world.register::<components::Velocity>();
         world.register::<components::Player>();
+        world.register::<components::Drag>();
 
         world.maintain();
 
@@ -26,8 +27,9 @@ impl GameModel {
 
         self.world.create_entity()
             .with(components::Position{x: 0.0, y: 0.0})
-            .with(components::Velocity{x: 0.0, y: 0.0})
+            .with(components::Velocity{x: 1.0, y: 1.0})
             .with(components::Player{socket: Some(socket)})
+            .with(components::Drag)
             .build();
 
     }

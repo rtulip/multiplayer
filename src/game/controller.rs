@@ -24,8 +24,8 @@ impl GameController {
 
         systems::HelloWorld.run_now(&self.model.world);
         systems::UpdatePos.run_now(&self.model.world);
-        systems::Friction{drag: 0.05}.run_now(&self.model.world);
-        
+        systems::Friction{drag: 0.1}.run_now(&self.model.world);
+
     }
 
 }
@@ -38,13 +38,14 @@ pub mod systems{
 
     impl<'a> System<'a> for HelloWorld {
         type SystemData = (ReadStorage<'a, components::Position>,
-                        ReadStorage<'a, components::Player>);
+                        ReadStorage<'a, components::Velocity>);
 
-        fn run(&mut self, (pos, player): Self::SystemData) {
+
+        fn run(&mut self, (pos, vel): Self::SystemData) {
             use specs::Join;
 
-            for (pos, player) in (&pos, &player).join(){
-                println!("hello {:?}! You're at position {:?}", player, pos)
+            for (pos, vel) in (&pos,  &vel).join(){
+                println!("entity at {:?} is going {:?} km/h", pos, vel)
             }
         }
     }
@@ -75,17 +76,17 @@ pub mod systems{
         fn run(&mut self, (mut vel, drag): Self::SystemData) {
             use specs::Join;
             for (vel, _) in (&mut vel, &drag).join() {
-                let x_drag = self.drag * vel.x * vel.x;
-                let y_drag = self.drag * vel.y * vel.y;
                 
-                match vel.x < x_drag {
-                    true => vel.x = 0.0,
-                    false => vel.x -= x_drag,
+                match (vel.x.abs() < self.drag, vel.x > 0.0) {
+                    (true, _) => vel.x = 0.0,
+                    (false, true) => vel.x -= self.drag,
+                    (false, false) => vel.x += self.drag, 
                 }
 
-                match vel.y < y_drag {
-                    true => vel.y = 0.0,
-                    false => vel.y -= y_drag,
+                match (vel.y.abs() < self.drag, vel.y > 0.0) {
+                    (true, _) => vel.y = 0.0,
+                    (false, true) => vel.y -= self.drag,
+                    (false, false) => vel.y += self.drag, 
                 }
             }
         }
