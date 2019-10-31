@@ -1,4 +1,4 @@
-use specs::RunNow;
+use specs::{RunNow, WorldExt};
 use crate::game::model::GameModel;
 
 
@@ -25,6 +25,8 @@ impl GameController {
         systems::HelloWorld.run_now(&self.model.world);
         systems::UpdatePos.run_now(&self.model.world);
         systems::Friction{drag: 0.1}.run_now(&self.model.world);
+
+        self.model.world.maintain();
 
     }
 
