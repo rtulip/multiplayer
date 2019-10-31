@@ -6,17 +6,20 @@ use std::time::Duration;
 use std::thread;
 
 use crate::threading::{threadpool, dispatcher};
+use crate::game::controller;
 use crate::{errors,message};
 
 /// All client connections are held in a hashmap. The key to this Hashmap is the socket address, and the value is the TcpStream.Arc
 /// Since multiple threads are going to be trying to add, remove, and maniuplate the values in hashmap, it must be protected behind
 /// a mutex.
 type ClientHashmap = Arc<Mutex<HashMap<SocketAddr, TcpStream>>>;
+type GameList = Arc<Mutex<Vec<controller::GameController>>>;
 
 /// Encapsulation of a server
 pub struct Server {
     /// Servers have a ClientHashmap to asyncronously track client connections.
     clients: ClientHashmap,
+    games: GameList,
     /// Servers have a TcpListener to listen for new client connections.
     listener: TcpListener,
     /// Servers have a ThreadPool which dispatches jobs.
@@ -49,8 +52,12 @@ impl Server {
         let clients = HashMap::new();
         let clients = Arc::new(Mutex::new(clients));
 
+        let games: Vec<controller::GameController> = Vec::new();
+        let games = Arc::new(Mutex::new(games));
+
         Server{
             clients,
+            games,
             listener,
             pool,
         }    
@@ -73,6 +80,10 @@ impl Server {
     ///         * 'Send Message' - Sends a message to a connected client.
     pub fn start(self) {
 
+        let mut games = self.games.lock().unwrap();
+        games.push(controller::GameController::new());
+        std::mem::drop(games);
+
         // Publish data continually to each client. 
         let map_mutex = Arc::clone(&self.clients);
         let dispatch = self.pool.dispatcher.clone();
@@ -80,6 +91,11 @@ impl Server {
 
             publish_data(&map_mutex, &dispatch)
 
+        });
+
+        let games_clone = Arc::clone(&self.games);
+        self.pool.dispatcher.execute_loop(move ||{
+            dispatch_sys(&games_clone)
         });
 
         loop {
@@ -90,8 +106,9 @@ impl Server {
                 let stream_clone = stream.try_clone().expect("Unable to clone stream");
                 let addr_clone = addr.clone();
                 let map_clone = Arc::clone(&self.clients);
+                let games_clone = Arc::clone(&self.games);
                 self.pool.dispatcher.execute(move || {
-                    add_client(addr_clone, stream_clone, map_clone);
+                    add_client(addr_clone, stream_clone, map_clone, games_clone);
                 });
 
                 // Dispatch client_listen() on loop.
@@ -185,15 +202,21 @@ fn client_listen(mut socket: TcpStream, addr: SocketAddr, map_mutex: &ClientHash
 /// * 'addr' - The SocketAddr which will serve as a key to the hashmap.
 /// * 'socket' - The TcpStream of the client which will serve as the value to the hashmap.
 /// * 'map_mutex' - A ClientHashMap where the client will be inserted.
-fn add_client(addr: SocketAddr, socket: TcpStream, map_mutex: ClientHashmap){
+fn add_client(addr: SocketAddr, socket: TcpStream, map_mutex: ClientHashmap, games: GameList){
 
     let mut clients = map_mutex.lock().unwrap();
     
-    if let Some(_) = clients.insert(addr, socket){
+    if let Some(_) = clients.insert(addr, socket.try_clone().expect("Unable to clone socket")){
         println!("Client {} already in map", addr);
     } else {
         println!("Client {} successfully added to map", addr);
     }
+
+    std::mem::drop(clients);
+
+    let mut games = games.lock().unwrap();
+    games[0].model.add_player(socket.try_clone().expect("Unable to clone socket"));
+
 
 }
 
@@ -236,6 +259,22 @@ fn publish_data(map_mutex: &ClientHashmap, dispatch: &dispatcher::Dispatcher) ->
 
     std::mem::drop(clients);
     thread::sleep(Duration::from_secs(2));
+
+    Ok(())
+
+}
+
+fn dispatch_sys(games: &GameList) -> errors::ExpectedSuccess {
+
+    let mut games = games.lock().unwrap();
+    for game in games.iter_mut(){
+
+        game.dispatch();
+
+    }
+
+    std::mem::drop(games);
+    thread::sleep(Duration::from_secs(1));
 
     Ok(())
 

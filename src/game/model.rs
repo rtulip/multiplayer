@@ -1,8 +1,8 @@
-use specs::{World, WorldExt, Builder};
+use specs::{Builder, World, WorldExt};
 use std::net::TcpStream;
 
 pub struct GameModel{
-    world: World,
+    pub world: World,
 }
 
 impl GameModel {
