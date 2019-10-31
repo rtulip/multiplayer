@@ -1,5 +1,5 @@
 extern crate multiplayer;
-use multiplayer::server;
+use multiplayer::server_side::server;
 
 
 fn main() {

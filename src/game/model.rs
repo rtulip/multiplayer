@@ -1,13 +1,12 @@
 use specs::{Builder, World, WorldExt};
-use std::net::TcpStream;
 use std::sync::{Arc, Mutex};
-use std::collections::HashMap;
+use std::collections::HashSet;
 
-use crate::threading::ConnectionCollection;
+use crate::server_side::client::ClientCollection;
 
 pub struct GameModel{
     pub world: World,
-    pub players: ConnectionCollection,
+    pub players: ClientCollection,
 }
 
 impl GameModel {
@@ -22,7 +21,7 @@ impl GameModel {
 
         world.maintain();
 
-        let players: HashMap<u32, Option<TcpStream>> = HashMap::new();
+        let players: HashSet<u32> = HashSet::new();
         let players = Arc::new(Mutex::new(players));
 
         GameModel {
@@ -32,7 +31,7 @@ impl GameModel {
 
     }
 
-    pub fn add_player(&mut self, player_id: u32,socket: TcpStream) {
+    pub fn add_player(&mut self, player_id: u32) {
 
         self.world.create_entity()
             .with(components::Position{x: 0.0, y: 0.0})
@@ -42,9 +41,10 @@ impl GameModel {
             .build();
 
         let mut players = self.players.lock().unwrap();
-        match players.insert(player_id, Some(socket)){
-            None => println!("Player added successfully"),
-            _ => println!("Updated Player info"),
+        if players.insert(player_id){
+            println!("Player added successfully");
+        } else {
+            println!("Player already in HashSet");
         }
     }
 
