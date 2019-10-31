@@ -2,7 +2,7 @@ use std::io::prelude::*;
 use std::net::TcpStream;
 
 use crate::threading::threadpool;
-use crate::comms::message;
+use crate::comms::{message, handler};
 use crate::errors::InputHandleError;
 
 pub struct Host {
@@ -58,7 +58,7 @@ impl Host {
                 Ok(_) => {
                     let dispatch_clone = self.pool.dispatcher.clone();
                     self.pool.dispatcher.execute(move || {
-                        message::receive_json(&buff, dispatch_clone);
+                        handler::receive_json(&buff, dispatch_clone);
                     });
                 },
                 Err(_) => {
