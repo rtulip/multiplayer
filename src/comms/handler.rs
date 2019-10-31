@@ -65,10 +65,7 @@ pub trait Handler {
         println!("Received Json: {}", v);
         match identifier {
             Value::String(text) => {
-                match text.as_str() {
-                    id => true,
-                    _ => false,
-                }
+                text == id
             },
             _ => false,
         }

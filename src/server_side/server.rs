@@ -171,6 +171,8 @@ fn connect_client(mut socket: TcpStream, dispatch: &dispatcher::Dispatcher, clie
                     )
                 });
 
+            } else {
+                println!("Failed Handshake with client. Dropping");
             }          
 
         },
