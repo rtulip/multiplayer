@@ -16,5 +16,5 @@ The server must be running to connect to the clients
 ## Running the host client
 
 ```console
-./host.sh
+./host_client.sh
 ```
