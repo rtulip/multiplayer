@@ -1,6 +1,6 @@
 #![allow(unused_variables)]
 pub mod host;
-pub mod servers;
+pub mod server_side;
 pub mod threading;
 pub mod errors;
 pub mod message;
