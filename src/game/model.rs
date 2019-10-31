@@ -36,7 +36,7 @@ impl GameModel {
 
 pub mod components {
 
-    use specs::{Component, VecStorage};
+    use specs::{Component, VecStorage, NullStorage};
     use std::net::TcpStream;
 
     #[derive(Component, Debug)]
@@ -59,5 +59,8 @@ pub mod components {
         pub socket: Option<TcpStream>,
     }
 
+    #[derive(Component, Default)]
+    #[storage(NullStorage)]
+    pub struct Drag;
 
 }
