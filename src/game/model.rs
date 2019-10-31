@@ -1,5 +1,4 @@
 use specs::{Builder, World, WorldExt};
-use std::net::TcpStream;
 use std::sync::{Arc, Mutex};
 use std::collections::HashSet;
 
@@ -32,7 +31,7 @@ impl GameModel {
 
     }
 
-    pub fn add_player(&mut self, player_id: u32,socket: TcpStream) {
+    pub fn add_player(&mut self, player_id: u32) {
 
         self.world.create_entity()
             .with(components::Position{x: 0.0, y: 0.0})

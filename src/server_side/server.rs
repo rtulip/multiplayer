@@ -110,13 +110,18 @@ impl Server {
 
                 std::mem::drop(clients);            
 
+                let new_client = client::Client {
+                    id: client_id,
+                    socket: Some(stream.try_clone().expect("Unabled to clone stream")),
+                    game_id: Some(0 as GameID),
+                    state: client::ClientState::InGame,
+                };
+                
                 // Dispatch add_client().
-                let stream_clone = stream.try_clone().expect("Unable to clone stream");
-                let id_clone = client_id.clone();
                 let map_clone = Arc::clone(&self.clients);
                 let games_clone = Arc::clone(&self.games);
                 self.pool.dispatcher.execute(move || {
-                    add_client(id_clone, stream_clone, map_clone, games_clone);
+                    add_client(new_client.try_clone().expect("Failed to clone Client"), map_clone, games_clone);
                 });
 
                 // Dispatch client_listen() on loop.
@@ -227,18 +232,14 @@ fn client_listen(
 /// * 'addr' - The SocketAddr which will serve as a key to the hashmap.
 /// * 'socket' - The TcpStream of the client which will serve as the value to the hashmap.
 /// * 'map_mutex' - A ClientHashMap where the client will be inserted.
-fn add_client(client_id: client::ClientID, socket: TcpStream, map_mutex: ClientHashmap, games: GameHashMap){
+fn add_client(client: client::Client, map_mutex: ClientHashmap, games: GameHashMap){
 
     let mut clients = map_mutex.lock().unwrap();
-    if let Some(_) = clients.insert(client_id, client::Client{
-        id: client_id,
-        socket: Some(socket.try_clone().expect("Failed to clone socket")),
-        game_id: Some(0 as GameID),
-        state: client::ClientState::InGame,
-    }){
-        println!("Client {} already in map", client_id);
+    let id = client.id;
+    if let Some(_) = clients.insert(client.id, client){
+        println!("Client {} already in map", id);
     } else {
-        println!("Client {} successfully added to map", client_id);
+        println!("Client {} successfully added to map", id);
     }
 
     std::mem::drop(clients);
@@ -249,7 +250,7 @@ fn add_client(client_id: client::ClientID, socket: TcpStream, map_mutex: ClientH
         let players = game.model.players.lock().unwrap();
         let len = players.len();
         std::mem::drop(players);
-        game.model.add_player(len as u32, socket.try_clone().expect("Unable to clone socket"));
+        game.model.add_player(len as u32);
     }
 
 }
