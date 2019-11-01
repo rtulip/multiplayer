@@ -1,9 +1,9 @@
+use crate::server_side::client::ClientID;
 use std::error;
 use std::fmt;
-use crate::server_side::client::ClientID;
 
 #[derive(Debug, Clone)]
-pub struct ClientDisconnectError{
+pub struct ClientDisconnectError {
     pub client_id: ClientID,
 }
 
@@ -35,21 +35,21 @@ impl error::Error for ClientDisconnectError {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         // Generic error, underlying cause isn't tracked.
         None
-    } 
+    }
 }
 
 impl error::Error for InputHandleError {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         // Generic error, underlying cause isn't tracked.
         None
-    } 
+    }
 }
 
 impl error::Error for UnexpectedError {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         // Generic error, underlying cause isn't tracked.
         None
-    } 
+    }
 }
 
 pub type ConnectionStatus = std::result::Result<(), ClientDisconnectError>;

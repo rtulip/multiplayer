@@ -1,5 +1,5 @@
-use std::thread;
 use std::sync::{mpsc, Arc, Mutex};
+use std::thread;
 
 use crate::threading::job;
 
@@ -9,9 +9,7 @@ pub struct Worker {
 }
 
 impl Worker {
-    pub fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<job::Message>>>) ->
-        Worker {
-
+    pub fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<job::Message>>>) -> Worker {
         let thread = thread::spawn(move || loop {
             println!("Worker {} waiting for job", id);
             let message = receiver.lock().unwrap().recv().unwrap();
@@ -20,13 +18,12 @@ impl Worker {
                 job::Message::NewJob(job) => {
                     println!("Worker {} got a job; executing.", id);
                     job.call_box();
-                },
+                }
                 job::Message::Terminate => {
                     println!("Worker {} was told to terminate.", id);
                     break;
-                },
+                }
             }
-        
         });
 
         Worker {
