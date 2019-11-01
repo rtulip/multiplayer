@@ -1,14 +1,41 @@
 use crate::comms::message;
 use serde_json::Value;
 
+/// Default implementer of Handler
 pub struct DefaultHandler;
 
 impl Handler for DefaultHandler{
-    fn handle_text_msg(&mut self, msg: message::TextMessage){}
+    fn handle_text_msg(&mut self, msg: message::TextMessage){
+        println!("Text: {}",msg.text);
+    }
     fn handle_request_client_id(&mut self, msg: message::RequestClientID){}
     fn handle_request_client_id_response(&mut self, msg: message::RequestClientIDResponse){}
 }
 
+/// Trait to define how to handle different types of messages. 
+/// 
+/// # Example 
+/// 
+/// ```
+/// extern crate multiplayer;
+/// use serde_json::json;
+/// use serde_json;
+/// use multiplayer::comms::message;
+/// use multiplayer::comms::handler::{Handler, DefaultHandler};
+/// 
+/// let mut h = DefaultHandler;
+/// let msg = json!({
+///     "msg_type": "Text",
+///     "data": {
+///         "text": "Hello Handler!"
+///     }
+/// });
+/// 
+/// let msg = msg.to_string();
+/// let buff = msg.into_bytes();
+/// 
+/// h.receive_json(&buff);
+/// ```
 pub trait Handler {
 
     fn handle_text_msg(&mut self, msg: message::TextMessage);
@@ -48,6 +75,7 @@ pub trait Handler {
         }
     }
 
+    /// Returns a Value from a buffer.
     fn parse_json(&self, buff: &Vec<u8>) -> Value {
         let msg = buff.clone().into_iter().take_while(|&x| x!= 0).collect::<Vec<_>>();
         let string = String::from_utf8(msg).expect("Invlaid utf8 message");
@@ -55,6 +83,7 @@ pub trait Handler {
         v
     }
 
+    /// Checks if message identifier matches any of the IDENTIFIER constants.
     fn is_type(&self, buff: &Vec<u8>, id: &str) -> bool {
 
         let v = self.parse_json(buff);
