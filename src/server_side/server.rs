@@ -163,9 +163,7 @@ fn connect_client(
                 // Create the client object
                 let new_client = client::Client {
                     id: resp.id,
-                    message_handler: client::ClientHandler {
-                        socket: Some(socket.try_clone().expect("Failed to clone socket")),
-                    },
+                    socket: Some(socket.try_clone().expect("Failed to clone socket")),
                     game_id: None,
                     state: client::ClientState::Waiting,
                 };
@@ -215,7 +213,7 @@ fn client_listen(
     game_mutex: &GameHashmap,
     dispatch: &dispatcher::Dispatcher,
 ) -> errors::ConnectionStatus {
-    if let Some(mut socket) = client.message_handler.socket {
+    if let Some(mut socket) = client.socket {
         let mut buff = vec![0; message::MSG_SIZE];
 
         match socket.read(&mut buff) {
@@ -335,7 +333,7 @@ fn publish_data(
 
             if let Some(client) = clients.get_mut(player_id) {
                 let clone = client.try_clone().expect("Failed to clone Client");
-                if let Some(mut socket) = clone.message_handler.socket {
+                if let Some(mut socket) = clone.socket {
                     let msg = message::TextMessage::new("Game Data");
                     message::send_json(msg, &mut socket);
                 }
