@@ -1,7 +1,7 @@
-pub mod worker;
-pub mod threadpool;
-pub mod job;
 pub mod dispatcher;
+pub mod job;
+pub mod threadpool;
+pub mod worker;
 
 use std::collections::HashSet;
 use std::sync::{Arc, Mutex};

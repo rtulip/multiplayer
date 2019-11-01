@@ -9,7 +9,6 @@ impl<F: FnOnce()> FnBox for F {
 }
 
 pub type Job = Box<FnBox + Send + 'static>;
-
 pub enum Message {
     NewJob(Job),
     Terminate,

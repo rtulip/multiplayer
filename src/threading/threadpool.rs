@@ -2,9 +2,9 @@ use std::sync::mpsc;
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use crate::threading::worker::Worker;
 use crate::threading::dispatcher::Dispatcher;
 use crate::threading::job;
+use crate::threading::worker::Worker;
 
 pub struct ThreadPool {
     workers: Vec<Worker>,
@@ -35,9 +35,9 @@ impl ThreadPool {
         let dispatcher = Dispatcher {
             sender,
             send_term,
-            recv_term,            
+            recv_term,
         };
-        
+
         ThreadPool {
             workers,
             dispatcher,
@@ -51,7 +51,10 @@ impl Drop for ThreadPool {
 
         for _ in &mut self.workers {
             self.dispatcher.send(job::Message::Terminate);
-            self.dispatcher.send_term.send(job::Message::Terminate).unwrap();
+            self.dispatcher
+                .send_term
+                .send(job::Message::Terminate)
+                .unwrap();
         }
 
         println!("Shutting down all workers.");
@@ -65,4 +68,3 @@ impl Drop for ThreadPool {
         }
     }
 }
-
