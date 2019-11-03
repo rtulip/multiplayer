@@ -16,10 +16,10 @@ pub trait Message<'a>: Serialize + Deserialize<'a> {
 
     /// Converts a Message to json with the following format:
     ///
-    ///     {
-    ///         "msg_type": MSG_TYPE,
-    ///         "data": self,
-    ///     }
+    /// json!({
+    ///     "msg_type": "MSG_IDENTIFIER",
+    ///     "data": self,
+    ///  })
     fn to_json_string(&self) -> String {
         let v = json!({
             "msg_type": Self::MSG_TYPE.to_owned(),
