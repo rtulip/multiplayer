@@ -17,7 +17,6 @@ impl HostClient {
             dispatch,
             socket
         }
-
     }
 
 }
@@ -49,8 +48,7 @@ impl Handler for HostClient {
             message::send_json(response, &mut socket_clone);
         })
     }
-
-    fn handle_request_client_id_response(&mut self, msg: message::RequestClientIDResponse) {}
+    
 }
 
 fn read_input_line(prompt: &str) -> Result<String, InputHandleError> {

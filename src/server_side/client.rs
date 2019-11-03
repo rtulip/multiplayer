@@ -64,9 +64,4 @@ impl State for Client {
 }
 
 impl Handler for Client {
-    fn handle_text_msg(&mut self, msg: message::TextMessage) {}
-
-    fn handle_request_client_id(&mut self, msg: message::RequestClientID) {}
-
-    fn handle_request_client_id_response(&mut self, msg: message::RequestClientIDResponse) {}
 }

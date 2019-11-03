@@ -50,9 +50,9 @@ impl Handler for DefaultHandler {
 /// h.receive_json(&buff);
 /// ```
 pub trait Handler: TryClone {
-    fn handle_text_msg(&mut self, msg: message::TextMessage);
-    fn handle_request_client_id(&mut self, msg: message::RequestClientID);
-    fn handle_request_client_id_response(&mut self, msg: message::RequestClientIDResponse);
+    fn handle_text_msg(&mut self, msg: message::TextMessage){}
+    fn handle_request_client_id(&mut self, msg: message::RequestClientID){}
+    fn handle_request_client_id_response(&mut self, msg: message::RequestClientIDResponse){}
 
     fn receive_json(&mut self, buff: &Vec<u8>) {
         let v = self.parse_json(buff);
