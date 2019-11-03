@@ -213,6 +213,7 @@ fn client_listen(
     game_mutex: &GameHashmap,
     dispatch: &dispatcher::Dispatcher,
 ) -> errors::ConnectionStatus {
+    let mut client_clone = client.try_clone().expect("Failed to clone client");
     if let Some(mut socket) = client.socket {
         let mut buff = vec![0; message::MSG_SIZE];
 
@@ -238,10 +239,8 @@ fn client_listen(
                 let msg = String::from_utf8(msg).expect("Invalid utf8 message");
                 println!("MSG: {}", msg);
 
-                // Dispatch send_message() to echo the message to the client.
                 dispatch.execute(move || {
-                    let msg = message::TextMessage::new(msg);
-                    message::send_json(msg, &mut socket);
+                    client_clone.receive_json(&buff);
                 });
 
                 // Say everything is Ok
