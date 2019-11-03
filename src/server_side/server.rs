@@ -9,15 +9,8 @@ use crate::comms::handler::{DefaultHandler, Handler, TryClone};
 use crate::comms::message;
 use crate::errors;
 use crate::game::controller;
-use crate::server_side::client;
+use crate::server_side::{client, ClientHashmap, GameHashmap};
 use crate::threading::{dispatcher, threadpool};
-
-/// All client connections are held in a hashmap. The key to this Hashmap is the socket address, and the value is the TcpStream.Arc
-/// Since multiple threads are going to be trying to add, remove, and maniuplate the values in hashmap, it must be protected behind
-/// a mutex.
-type GameID = u32;
-type ClientHashmap = Arc<Mutex<HashMap<client::ClientID, client::Client>>>;
-type GameHashmap = Arc<Mutex<HashMap<GameID, controller::GameController>>>;
 
 /// Encapsulation of a server
 pub struct Server {
