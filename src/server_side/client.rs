@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex};
 use crate::comms::handler::{Handler, TryClone};
 // use crate::comms::message;
 use crate::game::GameID;
+use crate::server_side::{ClientHashmap, GameHashmap};
 use crate::state::State;
 
 pub type ClientID = String;
@@ -31,6 +32,8 @@ pub struct Client {
     pub socket: Option<TcpStream>,
     pub game_id: Option<GameID>,
     pub state: ClientState,
+    pub clients: ClientHashmap,
+    pub games: GameHashmap,
 }
 
 impl TryClone for Client {
@@ -52,6 +55,8 @@ impl TryClone for Client {
             state,
             socket,
             game_id,
+            clients: Arc::clone(&self.clients),
+            games: Arc::clone(&self.games),
         })
     }
 }

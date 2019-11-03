@@ -159,6 +159,8 @@ fn connect_client(
                     socket: Some(socket.try_clone().expect("Failed to clone socket")),
                     game_id: None,
                     state: client::ClientState::Waiting,
+                    clients: Arc::clone(&clients),
+                    games: Arc::clone(&games),
                 };
 
                 let c = clients.lock().unwrap();
