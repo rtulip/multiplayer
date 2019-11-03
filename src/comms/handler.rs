@@ -1,8 +1,21 @@
 use crate::comms::message;
 use serde_json::Value;
 
+pub trait TryClone: std::marker::Sized {
+
+    fn try_clone(&self) -> std::io::Result<Self>;
+
+}
+
 /// Default implementer of Handler
+#[derive(Clone)]
 pub struct DefaultHandler;
+
+impl TryClone for DefaultHandler {
+    fn try_clone(&self) -> std::io::Result<DefaultHandler> {
+        Ok(self.clone())
+    }
+}
 
 impl Handler for DefaultHandler {
     fn handle_text_msg(&mut self, msg: message::TextMessage) {
@@ -36,7 +49,7 @@ impl Handler for DefaultHandler {
 ///
 /// h.receive_json(&buff);
 /// ```
-pub trait Handler {
+pub trait Handler: TryClone {
     fn handle_text_msg(&mut self, msg: message::TextMessage);
     fn handle_request_client_id(&mut self, msg: message::RequestClientID);
     fn handle_request_client_id_response(&mut self, msg: message::RequestClientIDResponse);

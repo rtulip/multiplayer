@@ -1,7 +1,7 @@
 use std::io::prelude::*;
 use std::net::TcpStream;
 
-use crate::comms::handler::Handler;
+use crate::comms::handler::{Handler, TryClone};
 use crate::comms::message;
 use crate::errors::InputHandleError;
 use crate::threading::{dispatcher, threadpool};
@@ -88,8 +88,8 @@ pub struct HostHandler {
     pub socket: TcpStream,
 }
 
-impl HostHandler {
-    pub fn try_clone(&self) -> std::io::Result<Self> {
+impl TryClone for HostHandler {
+    fn try_clone(&self) -> std::io::Result<Self> {
         let dispatch = self.dispatch.clone();
         match self.socket.try_clone() {
             Ok(socket) => Ok(HostHandler { dispatch, socket }),

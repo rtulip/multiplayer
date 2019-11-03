@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::net::TcpStream;
 use std::sync::{Arc, Mutex};
 
-use crate::comms::handler::Handler;
+use crate::comms::handler::{Handler, TryClone};
 use crate::comms::message;
 use crate::game::GameID;
 use crate::state::State;
@@ -33,9 +33,9 @@ pub struct Client {
     pub state: ClientState,
 }
 
-impl Client {
+impl TryClone for Client {
     // Function to attempt to clone a Client.
-    pub fn try_clone(&self) -> std::io::Result<Client> {
+    fn try_clone(&self) -> std::io::Result<Client> {
         let id = self.id.clone();
         let state = self.state.clone();
         let game_id = self.game_id.clone();
@@ -45,7 +45,7 @@ impl Client {
                 socket = Some(sock.try_clone()?);
             },
             None => (),
-        }
+        };
 
         Ok(Client {
             id,

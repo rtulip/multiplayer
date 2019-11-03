@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
-use crate::comms::handler::{DefaultHandler, Handler};
+use crate::comms::handler::{DefaultHandler, Handler, TryClone};
 use crate::comms::message;
 use crate::errors;
 use crate::game::controller;
