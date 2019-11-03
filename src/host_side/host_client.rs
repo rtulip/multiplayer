@@ -2,7 +2,7 @@ use crate::comms::handler::{Handler, TryClone};
 use crate::comms::message;
 use crate::errors::InputHandleError;
 use crate::threading::dispatcher::Dispatcher;
-use std::net::TcpStream;
+use std::net::{Shutdown,TcpStream};
 
 pub struct HostClient {
     pub dispatch: Dispatcher,
@@ -38,6 +38,31 @@ impl Handler for HostClient {
             let response = message::RequestClientIDResponse { id };
             message::send_json(response, &mut socket_clone);
         })
+    }
+
+    fn handle_login_status(&mut self, msg: message::LoginStatus) {
+        if msg.success {
+            let socket_clone = self.socket.try_clone().expect("Failed to clone socket");
+            let dispatch_clone = self.dispatch.clone();
+            self.dispatch.execute_loop(move || {
+
+                match read_input_line("Enter a Message"){
+                    Ok(msg) => {
+                        let mut s_clone = socket_clone.try_clone().expect("Unable to clone stream");
+                        dispatch_clone.execute(move || {
+                            let msg = message::TextMessage::new(msg);
+                            message::send_json(msg, &mut s_clone);
+                        });
+                        Ok(())
+                    },
+                    Err(e) => Err(e),
+
+                }
+            });
+        } else {
+            println!("Failed to login successfully!");
+            self.socket.shutdown(Shutdown::Both).expect("Shutdown call failed!");
+        }
     }
 }
 

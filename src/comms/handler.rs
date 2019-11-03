@@ -82,6 +82,11 @@ pub trait Handler: TryClone {
                             .expect("Failed to parse RequestClientIDResponse");
                         self.handle_text_msg(msg);
                     }
+                    message::LOGIN_STATUS_IDENTIFIER => {
+                        let msg: message::LoginStatus = serde_json::from_str(data_string.as_str())
+                            .expect("Failed to parse LoginStatus");
+                        self.handle_login_status(msg);
+                    }
                     _ => println!("Unknown Message Identifier"),
                 }
             }
