@@ -10,6 +10,8 @@ pub const TEXT_MESSAGE_IDENTIFIER: &str = "Text";
 pub const REQUEST_CLIENT_ID_IDENTIFIER: &str = "RequestClientID";
 pub const REQUEST_CLIENT_ID_RESPONSE_IDENTIFIER: &str = "RequestClientIDResponse";
 pub const LOGIN_STATUS_IDENTIFIER: &str = "LoginStatus";
+pub const REQUEST_JOIN_GAME_IDENTIFIER: &str = "RequestJoinGame";
+pub const REQUEST_JOIN_GAME_RESPONSE_IDENTIFIER: &str = "RequestJoinGameResponse";
 
 /// Trait to define behaviour of a message. MSG_TYPE must be a unique identifier for the Message.
 pub trait Message<'a>: Serialize + Deserialize<'a> {
@@ -61,6 +63,14 @@ pub struct LoginStatus {
     pub success: bool,
 }
 
+#[derive(Deserialize, Serialize)]
+pub struct RequestJoinGame;
+
+#[derive(Deserialize, Serialize)]
+pub struct RequestJoinGameResponse{
+    waiting_for: u32,
+}
+
 impl Message<'static> for TextMessage {
     const MSG_TYPE: &'static str = TEXT_MESSAGE_IDENTIFIER;
 }
@@ -72,6 +82,12 @@ impl Message<'static> for RequestClientIDResponse {
 }
 impl Message<'static> for LoginStatus {
     const MSG_TYPE: &'static str = LOGIN_STATUS_IDENTIFIER;
+}
+impl Message<'static> for RequestJoinGame {
+    const MSG_TYPE: &'static str = REQUEST_JOIN_GAME_IDENTIFIER;
+}
+impl Message<'static> for RequestJoinGameResponse {
+    const MSG_TYPE: &'static str = REQUEST_JOIN_GAME_RESPONSE_IDENTIFIER;
 }
 
 impl TextMessage {

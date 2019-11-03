@@ -52,6 +52,8 @@ pub trait Handler: TryClone {
     fn handle_request_client_id(&mut self, msg: message::RequestClientID) {}
     fn handle_request_client_id_response(&mut self, msg: message::RequestClientIDResponse) {}
     fn handle_login_status(&mut self, msg: message::LoginStatus) {}
+    fn handle_request_join_game(&mut self, msg: message::RequestJoinGame) {}
+    fn handle_request_join_game_response(&mut self, msg: message::RequestJoinGameResponse) {}
 
     fn receive_json(&mut self, buff: &Vec<u8>) {
         let v = self.parse_json(buff);
@@ -86,6 +88,16 @@ pub trait Handler: TryClone {
                         let msg: message::LoginStatus = serde_json::from_str(data_string.as_str())
                             .expect("Failed to parse LoginStatus");
                         self.handle_login_status(msg);
+                    }
+                    message::REQUEST_JOIN_GAME_IDENTIFIER => {
+                        let msg: message::RequestJoinGame = serde_json::from_str(data_string.as_str())
+                            .expect("Failed to parse RequestClientIDResponse");
+                        self.handle_request_join_game(msg);
+                    }
+                    message::REQUEST_JOIN_GAME_RESPONSE_IDENTIFIER => {
+                        let msg: message::RequestJoinGameResponse = serde_json::from_str(data_string.as_str())
+                            .expect("Failed to parse RequestClientIDResponse");
+                        self.handle_request_join_game_response(msg);
                     }
                     _ => println!("Unknown Message Identifier"),
                 }
