@@ -3,7 +3,7 @@ use std::net::TcpStream;
 use std::sync::{Arc, Mutex};
 
 use crate::comms::handler::{Handler, TryClone};
-use crate::comms::message;
+// use crate::comms::message;
 use crate::game::GameID;
 use crate::state::State;
 
@@ -43,7 +43,7 @@ impl TryClone for Client {
         match &self.socket {
             Some(sock) => {
                 socket = Some(sock.try_clone()?);
-            },
+            }
             None => (),
         };
 
@@ -63,5 +63,4 @@ impl State for Client {
     }
 }
 
-impl Handler for Client {
-}
+impl Handler for Client {}

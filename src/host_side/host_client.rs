@@ -1,8 +1,8 @@
-use std::net::TcpStream;
-use crate::threading::dispatcher::Dispatcher;
-use crate::comms::handler::{TryClone, Handler};
+use crate::comms::handler::{Handler, TryClone};
 use crate::comms::message;
 use crate::errors::InputHandleError;
+use crate::threading::dispatcher::Dispatcher;
+use std::net::TcpStream;
 
 pub struct HostClient {
     pub dispatch: Dispatcher,
@@ -10,28 +10,19 @@ pub struct HostClient {
 }
 
 impl HostClient {
-
     pub fn new(ip: &str, dispatch: Dispatcher) -> HostClient {
         let socket = TcpStream::connect(ip).expect("Unable to connect to server");
-        HostClient {
-            dispatch,
-            socket
-        }
+        HostClient { dispatch, socket }
     }
-
 }
 
 impl TryClone for HostClient {
-
-    fn try_clone(&self) -> std::io::Result<HostClient>{
-
-        Ok(HostClient{
+    fn try_clone(&self) -> std::io::Result<HostClient> {
+        Ok(HostClient {
             dispatch: self.dispatch.clone(),
             socket: self.socket.try_clone()?,
         })
-
     }
-
 }
 
 impl Handler for HostClient {
@@ -48,7 +39,6 @@ impl Handler for HostClient {
             message::send_json(response, &mut socket_clone);
         })
     }
-    
 }
 
 fn read_input_line(prompt: &str) -> Result<String, InputHandleError> {
