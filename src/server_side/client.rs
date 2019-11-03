@@ -12,12 +12,12 @@ pub type ClientCollection = Arc<Mutex<HashSet<ClientID>>>;
 
 /// Describes the state of the Client
 /// * Waiting - In lobby, not playing any game
-/// * PendingGame - In lobby, waiting for other players
+/// * InQueue - In lobby, waiting for other players
 /// * InGame - Actively playing the game
 #[derive(Clone, Copy)]
 pub enum ClientState {
     Waiting,
-    PendingGame,
+    InQueue,
     InGame,
 }
 

@@ -4,15 +4,24 @@ use crate::errors::InputHandleError;
 use crate::threading::dispatcher::Dispatcher;
 use std::net::{Shutdown,TcpStream};
 
+#[derive(Clone, Copy)]
+pub enum HostClientState {
+    Waiting,
+    InQueue,
+    InGame,
+}
+
 pub struct HostClient {
     pub dispatch: Dispatcher,
     pub socket: TcpStream,
+    pub state: HostClientState,
 }
 
 impl HostClient {
     pub fn new(ip: &str, dispatch: Dispatcher) -> HostClient {
         let socket = TcpStream::connect(ip).expect("Unable to connect to server");
-        HostClient { dispatch, socket }
+        let state = HostClientState::Waiting;
+        HostClient { dispatch, socket, state }
     }
 }
 
@@ -21,6 +30,7 @@ impl TryClone for HostClient {
         Ok(HostClient {
             dispatch: self.dispatch.clone(),
             socket: self.socket.try_clone()?,
+            state: self.state.clone(),
         })
     }
 }
@@ -78,6 +88,8 @@ fn parse_text(string: String, mut socket: &mut TcpStream) {
 
     if string.starts_with("/join") {
         println!("Entering Queue");
+        let msg = message::RequestJoinGame;
+        message::send_json(msg, &mut socket);
     } else if string.starts_with("/quit") {
         println!("Logging Out")
     } else {
