@@ -50,8 +50,7 @@ impl Handler for HostClient {
                     Ok(msg) => {
                         let mut s_clone = socket_clone.try_clone().expect("Unable to clone stream");
                         dispatch_clone.execute(move || {
-                            let msg = message::TextMessage::new(msg);
-                            message::send_json(msg, &mut s_clone);
+                            parse_text(msg, &mut s_clone);
                         });
                         Ok(())
                     },
@@ -61,7 +60,7 @@ impl Handler for HostClient {
             });
         } else {
             println!("Failed to login successfully!");
-            self.socket.shutdown(Shutdown::Both).expect("Shutdown call failed!");
+            self.socket.shutdown(Shutdown::Both).expect("Shutdown call failed");
         }
     }
 }
@@ -73,4 +72,17 @@ fn read_input_line(prompt: &str) -> Result<String, InputHandleError> {
         Ok(_buff_size) => return Ok(msg),
         Err(_) => Err(InputHandleError),
     }
+}
+
+fn parse_text(string: String, mut socket: &mut TcpStream) {
+
+    if string.starts_with("/join") {
+        println!("Entering Queue");
+    } else if string.starts_with("/quit") {
+        println!("Logging Out")
+    } else {
+        let msg = message::TextMessage::new(string);
+        message::send_json(msg, &mut socket);
+    }
+
 }
