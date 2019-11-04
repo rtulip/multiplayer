@@ -2,6 +2,7 @@ use crate::comms::handler::{Handler, TryClone};
 use crate::comms::message;
 use crate::errors::InputHandleError;
 use crate::threading::dispatcher::Dispatcher;
+use crate::state::State;
 use std::net::{Shutdown, TcpStream};
 
 #[derive(Clone, Copy)]
@@ -26,6 +27,13 @@ impl HostClient {
             socket,
             state,
         }
+    }
+}
+
+impl State for HostClient {
+    type StateEnum = HostClientState;
+    fn change_state(&mut self, new_state: Self::StateEnum) {
+        self.state = new_state;
     }
 }
 
@@ -79,6 +87,7 @@ impl Handler for HostClient {
 
     fn handle_request_join_game_response(&mut self, msg: message::RequestJoinGameResponse) {
         println!("In Queue. Waiting for {} player(s)", msg.waiting_for);
+        self.change_state(HostClientState::InQueue);
     }
 }
 
