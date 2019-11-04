@@ -90,13 +90,15 @@ pub trait Handler: TryClone {
                         self.handle_login_status(msg);
                     }
                     message::REQUEST_JOIN_GAME_IDENTIFIER => {
-                        let msg: message::RequestJoinGame = serde_json::from_str(data_string.as_str())
-                            .expect("Failed to parse RequestClientIDResponse");
+                        let msg: message::RequestJoinGame =
+                            serde_json::from_str(data_string.as_str())
+                                .expect("Failed to parse RequestClientIDResponse");
                         self.handle_request_join_game(msg);
                     }
                     message::REQUEST_JOIN_GAME_RESPONSE_IDENTIFIER => {
-                        let msg: message::RequestJoinGameResponse = serde_json::from_str(data_string.as_str())
-                            .expect("Failed to parse RequestClientIDResponse");
+                        let msg: message::RequestJoinGameResponse =
+                            serde_json::from_str(data_string.as_str())
+                                .expect("Failed to parse RequestClientIDResponse");
                         self.handle_request_join_game_response(msg);
                     }
                     _ => println!("Unknown Message Identifier"),

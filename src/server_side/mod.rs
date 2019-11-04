@@ -1,8 +1,8 @@
-use crate::game::GameID;
 use crate::game::controller::GameController;
-use crate::server_side::client::{ClientID, Client};
-use std::sync::{Arc, Mutex};
+use crate::game::GameID;
+use crate::server_side::client::{Client, ClientID};
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 pub mod client;
 pub mod server;

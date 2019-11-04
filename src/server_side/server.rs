@@ -8,7 +8,7 @@ use std::time::Duration;
 use crate::comms::handler::{DefaultHandler, Handler, TryClone};
 use crate::comms::message;
 use crate::errors;
-use crate::game::{controller,model};
+use crate::game::{controller, model};
 use crate::server_side::{client, ClientHashmap, GameHashmap};
 use crate::threading::{dispatcher, threadpool};
 
@@ -181,8 +181,6 @@ fn connect_client(
                         &dispatch_clone,
                     )
                 });
-            
-                
             } else {
                 println!("Failed Handshake with client. Dropping");
             }
@@ -276,11 +274,11 @@ fn add_client(client: client::Client) {
     let id = client.id.clone();
     let clone = client.try_clone().expect("failed to clone client");
     if let Some(_) = clients.insert(id.clone(), client) {
-        let msg = message::LoginStatus{ success: false };
+        let msg = message::LoginStatus { success: false };
         message::send_json(msg, &mut clone.socket.unwrap());
         println!("Client {} already in map", id);
     } else {
-        let msg = message::LoginStatus{ success: true };
+        let msg = message::LoginStatus { success: true };
         message::send_json(msg, &mut clone.socket.unwrap());
         println!("Client {} successfully added to map", id);
     }
@@ -329,7 +327,7 @@ fn publish_data(
     let mut games = games.lock().unwrap();
     for (_game_id, game) in games.iter_mut() {
         let state = game.model.get_state();
-        
+
         let players = game.model.players.lock().unwrap();
         for player_id in players.iter() {
             let mut clients = clients.lock().unwrap();
@@ -351,7 +349,6 @@ fn publish_data(
                             message::send_json(msg, &mut socket);
                         }
                     }
-                    
                 }
             }
             std::mem::drop(clients);
@@ -369,7 +366,6 @@ fn publish_data(
 fn dispatch_sys(games: &GameHashmap) -> errors::ExpectedSuccess {
     let mut games = games.lock().unwrap();
     for (_game_id, game) in games.iter_mut() {
-        
         let state = game.model.get_state();
         match state {
             model::GameState::Active => {
@@ -377,7 +373,6 @@ fn dispatch_sys(games: &GameHashmap) -> errors::ExpectedSuccess {
             }
             _ => (),
         }
-        
     }
 
     std::mem::drop(games);

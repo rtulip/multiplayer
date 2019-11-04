@@ -2,7 +2,7 @@ use crate::comms::handler::{Handler, TryClone};
 use crate::comms::message;
 use crate::errors::InputHandleError;
 use crate::threading::dispatcher::Dispatcher;
-use std::net::{Shutdown,TcpStream};
+use std::net::{Shutdown, TcpStream};
 
 #[derive(Clone, Copy)]
 pub enum HostClientState {
@@ -21,7 +21,11 @@ impl HostClient {
     pub fn new(ip: &str, dispatch: Dispatcher) -> HostClient {
         let socket = TcpStream::connect(ip).expect("Unable to connect to server");
         let state = HostClientState::Waiting;
-        HostClient { dispatch, socket, state }
+        HostClient {
+            dispatch,
+            socket,
+            state,
+        }
     }
 }
 
@@ -54,27 +58,26 @@ impl Handler for HostClient {
         if msg.success {
             let socket_clone = self.socket.try_clone().expect("Failed to clone socket");
             let dispatch_clone = self.dispatch.clone();
-            self.dispatch.execute_loop(move || {
-
-                match read_input_line("Enter a Message"){
+            self.dispatch
+                .execute_loop(move || match read_input_line("Enter a Message") {
                     Ok(msg) => {
                         let mut s_clone = socket_clone.try_clone().expect("Unable to clone stream");
                         dispatch_clone.execute(move || {
                             parse_text(msg, &mut s_clone);
                         });
                         Ok(())
-                    },
+                    }
                     Err(e) => Err(e),
-
-                }
-            });
+                });
         } else {
             println!("Failed to login successfully!");
-            self.socket.shutdown(Shutdown::Both).expect("Shutdown call failed");
+            self.socket
+                .shutdown(Shutdown::Both)
+                .expect("Shutdown call failed");
         }
     }
 
-    fn handle_request_join_game_response(&mut self, msg: message::RequestJoinGameResponse){
+    fn handle_request_join_game_response(&mut self, msg: message::RequestJoinGameResponse) {
         println!("In Queue. Waiting for {} player(s)", msg.waiting_for);
     }
 }
@@ -89,7 +92,6 @@ fn read_input_line(prompt: &str) -> Result<String, InputHandleError> {
 }
 
 fn parse_text(string: String, mut socket: &mut TcpStream) {
-
     if string.starts_with("/join") {
         println!("Entering Queue");
         let msg = message::RequestJoinGame;
@@ -100,5 +102,4 @@ fn parse_text(string: String, mut socket: &mut TcpStream) {
         let msg = message::TextMessage::new(string);
         message::send_json(msg, &mut socket);
     }
-
 }

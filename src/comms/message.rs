@@ -67,7 +67,7 @@ pub struct LoginStatus {
 pub struct RequestJoinGame;
 
 #[derive(Deserialize, Serialize)]
-pub struct RequestJoinGameResponse{
+pub struct RequestJoinGameResponse {
     pub waiting_for: u32,
 }
 

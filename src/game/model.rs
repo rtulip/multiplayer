@@ -36,14 +36,13 @@ impl GameModel {
     }
 
     pub fn add_player(&mut self, player_id: ClientID) {
-        
         let state = self.get_state();
         match state {
             GameState::PendingPlayers(n) => {
                 if n == 1 {
                     self.change_state(GameState::Active);
                 } else {
-                    self.change_state(GameState::PendingPlayers(n-1))
+                    self.change_state(GameState::PendingPlayers(n - 1))
                 }
 
                 self.world
@@ -53,7 +52,6 @@ impl GameModel {
                     .with(components::Player)
                     .with(components::Drag)
                     .build();
-                
                 let players = Arc::clone(&self.players);
                 let mut players = players.lock().unwrap();
                 if players.insert(player_id) {
@@ -61,12 +59,9 @@ impl GameModel {
                 } else {
                     println!("Player already in HashSet");
                 }
-
             }
             _ => (),
         }
-
-        
     }
 
     pub fn get_state(&self) -> GameState {
