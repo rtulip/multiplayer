@@ -163,37 +163,25 @@ fn connect_client(
                     games: Arc::clone(&games),
                 };
 
-                let c = clients.lock().unwrap();
-                let success = !c.contains_key(&new_client.id);
-                let client_clone = new_client.try_clone().expect("Failed to clone client");
-                let login_status = message::LoginStatus { success };
-                if let Some(mut socket) = client_clone.socket {
-                    message::send_json(login_status, &mut socket);
-                }
+                let client_clone = new_client.try_clone().expect("Failed to clone Client");
+                // Add clients to the ClientsHashmap as playing no game.
+                dispatch.execute(move || {
+                    add_client(client_clone);
+                });
 
-                if success {
-                    let client_clone = new_client.try_clone().expect("Failed to clone Client");
-                    let clients_clone = Arc::clone(clients);
-                    // Add clients to the ClientsHashmap as playing no game.
-                    dispatch.execute(move || {
-                        add_client(client_clone, clients_clone);
-                    });
-
-                    let clients_clone = Arc::clone(clients);
-                    let games_clone = Arc::clone(games);
-                    let dispatch_clone = dispatch.clone();
-                    // Listen to the client.
-                    dispatch.execute_loop(move || {
-                        client_listen(
-                            new_client.try_clone().expect("Failed to clone new Client"),
-                            &clients_clone,
-                            &games_clone,
-                            &dispatch_clone,
-                        )
-                    });
-                } else {
-                    println!("Client: {} already logged in", new_client.id);
-                }
+                let clients_clone = Arc::clone(clients);
+                let games_clone = Arc::clone(games);
+                let dispatch_clone = dispatch.clone();
+                // Listen to the client.
+                dispatch.execute_loop(move || {
+                    client_listen(
+                        new_client.try_clone().expect("Failed to clone new Client"),
+                        &clients_clone,
+                        &games_clone,
+                        &dispatch_clone,
+                    )
+                });
+            
                 
             } else {
                 println!("Failed Handshake with client. Dropping");
@@ -282,13 +270,18 @@ fn client_listen(
 /// * 'addr' - The SocketAddr which will serve as a key to the hashmap.
 /// * 'socket' - The TcpStream of the client which will serve as the value to the hashmap.
 /// * 'clients' - A ClientHashMap where the client will be inserted.
-fn add_client(client: client::Client, clients: ClientHashmap) {
+fn add_client(client: client::Client) {
+    let clients = Arc::clone(&client.clients);
     let mut clients = clients.lock().unwrap();
     let id = client.id.clone();
     let clone = client.try_clone().expect("failed to clone client");
     if let Some(_) = clients.insert(id.clone(), client) {
+        let msg = message::LoginStatus{ success: false };
+        message::send_json(msg, &mut clone.socket.unwrap());
         println!("Client {} already in map", id);
     } else {
+        let msg = message::LoginStatus{ success: true };
+        message::send_json(msg, &mut clone.socket.unwrap());
         println!("Client {} successfully added to map", id);
     }
 }

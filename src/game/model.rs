@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex};
 use crate::server_side::client::{ClientCollection, ClientID};
 use crate::state::State;
 
+#[derive(Clone, Copy)]
 pub enum GameState {
     PendingPlayers(u32),
     Active,
@@ -24,7 +25,7 @@ impl GameModel {
         world.register::<components::Player>();
         world.register::<components::Drag>();
 
-        world.insert(GameState::Active);
+        world.insert(GameState::PendingPlayers(2));
 
         world.maintain();
 
@@ -35,20 +36,42 @@ impl GameModel {
     }
 
     pub fn add_player(&mut self, player_id: ClientID) {
-        self.world
-            .create_entity()
-            .with(components::Position { x: 0.0, y: 0.0 })
-            .with(components::Velocity { x: 1.0, y: 1.0 })
-            .with(components::Player)
-            .with(components::Drag)
-            .build();
+        
+        let state = self.get_state();
+        match state {
+            GameState::PendingPlayers(n) => {
+                if n == 1 {
+                    self.change_state(GameState::Active);
+                } else {
+                    self.change_state(GameState::PendingPlayers(n-1))
+                }
 
-        let mut players = self.players.lock().unwrap();
-        if players.insert(player_id) {
-            println!("Player added successfully");
-        } else {
-            println!("Player already in HashSet");
+                self.world
+                    .create_entity()
+                    .with(components::Position { x: 0.0, y: 0.0 })
+                    .with(components::Velocity { x: 1.0, y: 1.0 })
+                    .with(components::Player)
+                    .with(components::Drag)
+                    .build();
+                
+                let players = Arc::clone(&self.players);
+                let mut players = players.lock().unwrap();
+                if players.insert(player_id) {
+                    println!("Player added successfully");
+                } else {
+                    println!("Player already in HashSet");
+                }
+
+            }
+            _ => (),
         }
+
+        
+    }
+
+    pub fn get_state(&self) -> GameState {
+        let state = self.world.read_resource::<GameState>();
+        (*state).clone()
     }
 }
 

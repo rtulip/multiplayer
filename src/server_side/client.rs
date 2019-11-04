@@ -4,7 +4,8 @@ use std::sync::{Arc, Mutex};
 
 use crate::comms::handler::{Handler, TryClone};
 // use crate::comms::message;
-use crate::game::GameID;
+use crate::game::{controller, GameID, model};
+use crate::comms::message;
 use crate::server_side::{ClientHashmap, GameHashmap};
 use crate::state::State;
 
@@ -68,4 +69,40 @@ impl State for Client {
     }
 }
 
-impl Handler for Client {}
+impl Handler for Client {
+    fn handle_request_join_game(&mut self, msg: message::RequestJoinGame){
+        let games = Arc::clone(&self.games);
+        let mut games = games.lock().unwrap();
+        let mut gid: Option<GameID> = None;
+        for (id, controller) in games.iter_mut(){
+            let state = controller.model.get_state();
+            match state {
+                model::GameState::PendingPlayers(n) => {
+                    gid = Some(id.clone());
+                    break;
+                }
+                _ => (),
+            }
+        }
+
+        match gid {
+            Some(id) => {
+                
+                println!("Adding player to existing game! {}", id);
+                let game = games.get_mut(&id).unwrap();
+                game.model.add_player(self.id.clone());
+
+            },
+            None => {
+
+                let new_gid = games.len();
+                let mut new_game = controller::GameController::new();
+                println!("Creating new game! {}", new_gid);
+                new_game.model.add_player(self.id.clone());
+                games.insert(new_gid as GameID, new_game);
+
+            } 
+        }
+
+    }
+}
