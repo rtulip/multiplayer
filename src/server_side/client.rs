@@ -104,5 +104,7 @@ impl Handler for Client {
             } 
         }
 
+        self.change_state(ClientState::InQueue);
+
     }
 }

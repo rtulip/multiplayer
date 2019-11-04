@@ -73,6 +73,10 @@ impl Handler for HostClient {
             self.socket.shutdown(Shutdown::Both).expect("Shutdown call failed");
         }
     }
+
+    fn handle_request_join_game_response(&mut self, msg: message::RequestJoinGameResponse){
+        println!("In Queue. Waiting for {} player(s)", msg.waiting_for);
+    }
 }
 
 fn read_input_line(prompt: &str) -> Result<String, InputHandleError> {

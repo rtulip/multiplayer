@@ -68,7 +68,7 @@ pub struct RequestJoinGame;
 
 #[derive(Deserialize, Serialize)]
 pub struct RequestJoinGameResponse{
-    waiting_for: u32,
+    pub waiting_for: u32,
 }
 
 impl Message<'static> for TextMessage {
