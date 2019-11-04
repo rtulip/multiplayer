@@ -12,6 +12,8 @@ pub const REQUEST_CLIENT_ID_RESPONSE_IDENTIFIER: &str = "RequestClientIDResponse
 pub const LOGIN_STATUS_IDENTIFIER: &str = "LoginStatus";
 pub const REQUEST_JOIN_GAME_IDENTIFIER: &str = "RequestJoinGame";
 pub const REQUEST_JOIN_GAME_RESPONSE_IDENTIFIER: &str = "RequestJoinGameResponse";
+pub const REQUEST_LEAVE_QUEUE_IDENTIFIER: &str = "RequestLeaveQueue";
+pub const REQUEST_LEAVE_QUEUE_RESPONSE_IDENTIFIER: &str = "RequestLeaveQueueResponse";
 
 /// Trait to define behaviour of a message. MSG_TYPE must be a unique identifier for the Message.
 pub trait Message<'a>: Serialize + Deserialize<'a> {
@@ -71,6 +73,14 @@ pub struct RequestJoinGameResponse {
     pub waiting_for: u32,
 }
 
+#[derive(Deserialize, Serialize)]
+pub struct RequestLeaveQueue;
+
+#[derive(Deserialize, Serialize)]
+pub struct RequestLeaveQueueResponse{
+    pub success: bool,
+}
+
 impl Message<'static> for TextMessage {
     const MSG_TYPE: &'static str = TEXT_MESSAGE_IDENTIFIER;
 }
@@ -88,6 +98,12 @@ impl Message<'static> for RequestJoinGame {
 }
 impl Message<'static> for RequestJoinGameResponse {
     const MSG_TYPE: &'static str = REQUEST_JOIN_GAME_RESPONSE_IDENTIFIER;
+}
+impl Message<'static> for RequestLeaveQueue {
+    const MSG_TYPE: &'static str = REQUEST_LEAVE_QUEUE_IDENTIFIER;
+}
+impl Message<'static> for RequestLeaveQueueResponse {
+    const MSG_TYPE: &'static str = REQUEST_LEAVE_QUEUE_RESPONSE_IDENTIFIER;
 }
 
 impl TextMessage {

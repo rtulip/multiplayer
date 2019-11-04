@@ -54,6 +54,8 @@ pub trait Handler: TryClone {
     fn handle_login_status(&mut self, msg: message::LoginStatus) {}
     fn handle_request_join_game(&mut self, msg: message::RequestJoinGame) {}
     fn handle_request_join_game_response(&mut self, msg: message::RequestJoinGameResponse) {}
+    fn handle_request_leave_queue(&mut self, msg: message::RequestLeaveQueue) {}
+    fn handle_request_leave_queue_response(&mut self, msg: message::RequestLeaveQueueResponse) {}
 
     fn receive_json(&mut self, buff: &Vec<u8>) {
         let v = self.parse_json(buff);
@@ -92,14 +94,26 @@ pub trait Handler: TryClone {
                     message::REQUEST_JOIN_GAME_IDENTIFIER => {
                         let msg: message::RequestJoinGame =
                             serde_json::from_str(data_string.as_str())
-                                .expect("Failed to parse RequestClientIDResponse");
+                                .expect("Failed to parse RequestJoinGame");
                         self.handle_request_join_game(msg);
                     }
                     message::REQUEST_JOIN_GAME_RESPONSE_IDENTIFIER => {
                         let msg: message::RequestJoinGameResponse =
                             serde_json::from_str(data_string.as_str())
-                                .expect("Failed to parse RequestClientIDResponse");
+                                .expect("Failed to parse RequestJoinGameResponse");
                         self.handle_request_join_game_response(msg);
+                    }
+                    message::REQUEST_LEAVE_QUEUE_IDENTIFIER => {
+                        let msg: message::RequestLeaveQueue = 
+                            serde_json::from_str(data_string.as_str())
+                                .expect("failed to parse RequestLeaveQueue");
+                        self.handle_request_leave_queue(msg);
+                    }
+                    message::REQUEST_LEAVE_QUEUE_RESPONSE_IDENTIFIER => {
+                        let msg: message::RequestLeaveQueueResponse = 
+                            serde_json::from_str(data_string.as_str())
+                                .expect("Failed to parse RequestLeaveQueueResponse");
+                        self.handle_request_leave_queue_response(msg);
                     }
                     _ => println!("Unknown Message Identifier"),
                 }
